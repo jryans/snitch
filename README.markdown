@@ -78,9 +78,9 @@ Agent Arguments
 ---------------
 There are several arguments that can be provided to the Snitch java agent.
 
-**```packages```** - A colon separated list of packages that Snitch should check for annotations<br/>
-**```annotation```** - The fully qualified name of the annotation class that Snitch should search for<br/>
-**```naming```** - The fully qualified name of the naming strategy class to use for discovered fields and methods<br/>
+```packages``` - A colon separated list of packages that Snitch should check for annotations<br/>
+```annotation``` - The fully qualified name of the annotation class that Snitch should search for<br/>
+```naming``` - The fully qualified name of the naming strategy class to use for discovered fields and methods<br/>
 
 Arguments are separated by commas and specified as ```key=value``` pairs.  For example:
 
