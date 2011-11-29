@@ -15,11 +15,11 @@
  */
 package com.bazaarvoice.snitch;
 
-import com.bazaarvoice.snitch.util.VariableIndex;
 import com.bazaarvoice.snitch.util.WorkQueue;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
 import com.google.common.collect.MapMaker;
+import com.google.common.collect.Sets;
 
 import java.lang.annotation.Annotation;
 import java.lang.instrument.ClassFileTransformer;
@@ -29,9 +29,6 @@ import java.security.ProtectionDomain;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Defines a monitor that observes all loaded classes in the JVM and looks for static fields or methods that are marked
@@ -42,34 +39,30 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * to index a class multiple times only to find the same annotated elements it saw the last time it was indexed.
  */
 public class AnnotationMonitor {
+    private static final MapMaker WEAK_KEY_MAP_MAKER = new MapMaker().weakKeys();
+    
     /** Instrumentation API for interfacing with the JVM to determine which classes are loaded. */
     private final Instrumentation _instrumentation;
 
     /** The set of packages to check when looking for annotations. */
     private final Set<String> _packages;
 
-    /** The annotation class to find. */
-    private final Class<? extends Annotation> _annotationClass;
-
-    /** The naming strategy to use to give names to newly discovered variables. */
-    private final NamingStrategy<? extends Annotation> _namingStrategy;
-
     /** The set of class loaders that have loaded a class since we've last indexed. */
     private final WorkQueue<ClassLoader> _dirtyLoaders = new WorkQueue<ClassLoader>();
 
-    /** The index of variables keyed by the class loader that loaded them. */
-    private final ConcurrentMap<ClassLoader, VariableIndex> _indices = new MapMaker().weakKeys().makeMap();
+    /** The set of classes that have already been processed and should never be re-processed again. */
+    private final Set<Class<?>> _processedClasses = Sets.newSetFromMap(WEAK_KEY_MAP_MAKER.<Class<?>, Boolean>makeMap());
 
-    /** A lock that is used while working with the index. */
-    private final ReadWriteLock _indexingLock = new ReentrantReadWriteLock();
+    private final VariableClassProcessor _variableProcessor;
+    private final FormatterClassProcessor _formatterProcessor;
 
     public AnnotationMonitor(Instrumentation instrumentation, Collection<String> packages,
                              Class<? extends Annotation> annotationClass,
                              NamingStrategy<? extends Annotation> namingStrategy) {
         _instrumentation = instrumentation;
         _packages = ImmutableSet.copyOf(packages);
-        _annotationClass = annotationClass;
-        _namingStrategy = namingStrategy;
+        _variableProcessor = new VariableClassProcessor(annotationClass, namingStrategy);
+        _formatterProcessor = new FormatterClassProcessor();
 
         // Register a transformer with the instrumentation framework so that we see when a class loader loads something
         instrumentation.addTransformer(new ClassFileTransformer() {
@@ -89,54 +82,36 @@ public class AnnotationMonitor {
         // Catch up with any queued work to make sure we give the most accurate picture possible
         processWorkQueue();
 
-        _indexingLock.readLock().lock();
-        try {
-            List<Variable> variables = Lists.newArrayList();
-
-            // Walk up the chain of loaders since this loader's ancestors could have loaded classes on behalf of it
-            while (loader != null) {
-                VariableIndex index = _indices.get(loader);
-                if (index != null) {
-                    variables.addAll(index.getVariables());
-                }
-                loader = loader.getParent();
-            }
-
-            return variables;
-        } finally {
-            _indexingLock.readLock().unlock();
-        }
+        return _variableProcessor.getVariables(loader);
     }
 
-    private void processWorkQueue() {
-        Set<ClassLoader> loaders = _dirtyLoaders.removeAll();
-        if (loaders.isEmpty()) {
-            return;
-        }
+    /** Retrieve the formatter for the provided class. */
+    public <T> Formatter<T> getFormatter(Class<T> cls) {
+        // Catch up with any queued work to make sure we give the most accurate picture possible
+        processWorkQueue();
 
-        _indexingLock.writeLock().lock();
-        try {
-            for (ClassLoader loader : loaders) {
-                VariableIndex index = _indices.get(loader);
-                if (index == null) {
-                    index = new VariableIndex(_annotationClass, _namingStrategy);
-                    _indices.put(loader, index);
-                }
-
-                for (Class cls : _instrumentation.getInitiatedClasses(loader)) {
-                    if (cls.getClassLoader() == loader && isClassInMonitoredPackage(cls)) {
-                        index.addClass(cls);
-                    }
-                }
-            }
-        } finally {
-            _indexingLock.writeLock().unlock();
-        }
+        return _formatterProcessor.getFormatter(cls);
     }
 
     private void onClassLoaded(ClassLoader loader, String dirName) {
         if (isClassDirNameInMonitoredPackage(dirName)) {
             _dirtyLoaders.add(loader);
+        }
+    }
+
+    private void processWorkQueue() {
+        List<ClassProcessor> processors = ImmutableList.of(_variableProcessor, _formatterProcessor);
+
+        for (ClassLoader loader : _dirtyLoaders.removeAll()) {
+            for (Class cls : _instrumentation.getInitiatedClasses(loader)) {
+                if (!_processedClasses.add(cls) || !isClassInMonitoredPackage(cls)) {
+                    continue;
+                }
+
+                for (ClassProcessor processor : processors) {
+                    processor.process(loader, cls);
+                }
+            }
         }
     }
 

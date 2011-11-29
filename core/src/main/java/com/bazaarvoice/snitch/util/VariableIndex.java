@@ -21,8 +21,6 @@ import com.bazaarvoice.snitch.NamingStrategy;
 import com.bazaarvoice.snitch.Variable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -30,7 +28,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
 
 public class VariableIndex {
     /** The annotation to find in classes that are added. */
@@ -38,9 +35,6 @@ public class VariableIndex {
 
     /** The strategy used for naming variables that are discovered. */
     private final NamingStrategy _namingStrategy;
-
-    /** The set of classes that have already been processed and should never be re-processed again. */
-    private final Set<Class<?>> _seenClasses = Sets.newSetFromMap(Maps.<Class<?>, Boolean>newHashMap());
 
     /** The set of variables that have been discovered. */
     private final List<Variable> _variables = Lists.newArrayList();
@@ -58,10 +52,6 @@ public class VariableIndex {
      */
     @SuppressWarnings({"unchecked"})
     public void addClass(Class<?> cls) {
-        if (!_seenClasses.add(cls)) {
-            return;
-        }
-
         for (Field field : cls.getDeclaredFields()) {
             int modifiers = field.getModifiers();
             if (!Modifier.isStatic(modifiers) || Modifier.isNative(modifiers) || field.isSynthetic()) {
@@ -91,7 +81,7 @@ public class VariableIndex {
             if (method.getReturnType() == void.class) {
                 continue;
             }
-            
+
             int modifiers = method.getModifiers();
             if (!Modifier.isStatic(modifiers) || Modifier.isNative(modifiers) || method.isSynthetic()) {
                 continue;
