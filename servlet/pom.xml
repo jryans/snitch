@@ -23,7 +23,12 @@
             <artifactId>snitch-core</artifactId>
             <version>0.1-SNAPSHOT</version>
         </dependency>
-        
+
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>javax.servlet</groupId>
             <artifactId>servlet-api</artifactId>
@@ -40,5 +45,6 @@
             <artifactId>mockito-core</artifactId>
             <scope>test</scope>
         </dependency>
+
     </dependencies>
 </project>

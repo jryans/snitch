@@ -43,7 +43,7 @@ import java.util.Set;
  */
 public class AnnotationMonitor {
     private static final MapMaker WEAK_KEY_MAP_MAKER = new MapMaker().weakKeys();
-    
+
     /** Instrumentation API for interfacing with the JVM to determine which classes are loaded. */
     private final Instrumentation _instrumentation;
 

@@ -33,6 +33,7 @@ import java.util.List;
 
 public class VariableServlet extends HttpServlet {
     public static final String ANNOTATION_MONITOR_ATTRIBUTE_NAME = "ANNOTATION_MONITOR";
+    private static final long serialVersionUID = 0;
 
     private AnnotationMonitor _monitor;
 

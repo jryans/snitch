@@ -24,7 +24,7 @@ public interface Variable {
 
     /** The type of the variable. */
     Class<?> getType();
-    
+
     /** The value of the variable. */
     Object getValue();
 }
