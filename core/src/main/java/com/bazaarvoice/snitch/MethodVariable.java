@@ -32,14 +32,22 @@ public class MethodVariable implements Variable {
         _method.setAccessible(true);
     }
 
+    @Override
     public Class<?> getOwner() {
         return _owner;
     }
 
+    @Override
     public String getName() {
         return _name;
     }
 
+    @Override
+    public Class<?> getType() {
+        return _method.getReturnType();
+    }
+
+    @Override
     public Object getValue() {
         try {
             // It's okay to pass null into the invoke call because this method is static

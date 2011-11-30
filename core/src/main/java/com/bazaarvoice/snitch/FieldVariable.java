@@ -32,14 +32,22 @@ public class FieldVariable implements Variable {
         _field.setAccessible(true);
     }
 
+    @Override
     public Class<?> getOwner() {
         return _owner;
     }
 
+    @Override
     public String getName() {
         return _name;
     }
 
+    @Override
+    public Class<?> getType() {
+        return _field.getType();
+    }
+
+    @Override
     public Object getValue() {
         try {
             // It's okay to pass null into the get call because this field is static
