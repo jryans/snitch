@@ -72,6 +72,7 @@ public class VariableClassProcessor implements ClassProcessor {
         try {
             while (loader != null) {
                 variables.addAll(_indices.getUnchecked(loader).getVariables());
+                loader = loader.getParent();
             }
         } finally {
             _lock.readLock().unlock();

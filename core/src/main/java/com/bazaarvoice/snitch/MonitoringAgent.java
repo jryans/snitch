@@ -79,7 +79,7 @@ public class MonitoringAgent {
     }
 
     /** Retrieve the global, JVM-wide instance of the monitor. */
-    public AnnotationMonitor getMonitor() {
+    public static AnnotationMonitor getMonitor() {
         return INSTANCE;
     }
 
