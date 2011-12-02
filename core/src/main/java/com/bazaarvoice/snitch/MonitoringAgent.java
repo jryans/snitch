@@ -16,6 +16,7 @@
 package com.bazaarvoice.snitch;
 
 import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
 
@@ -53,7 +54,7 @@ public class MonitoringAgent {
         NamingStrategy<? extends Annotation> namingStrategy = DEFAULT_NAMING_STRATEGY;
 
         // Parse arguments...
-        Map<String, String> args = ARG_SPLITTER.split(agentArgs);
+        Map<String, String> args = ARG_SPLITTER.split(Strings.nullToEmpty(agentArgs));
         for (Map.Entry<String, String> entry : args.entrySet()) {
             String name = entry.getKey();
             String value = entry.getValue();
