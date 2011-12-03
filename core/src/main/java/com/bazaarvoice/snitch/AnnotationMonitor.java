@@ -16,6 +16,7 @@
 package com.bazaarvoice.snitch;
 
 import com.bazaarvoice.snitch.util.WorkQueue;
+import com.google.common.collect.ComparisonChain;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.MapMaker;
@@ -27,6 +28,8 @@ import java.lang.instrument.IllegalClassFormatException;
 import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
@@ -40,7 +43,7 @@ import java.util.Set;
  */
 public class AnnotationMonitor {
     private static final MapMaker WEAK_KEY_MAP_MAKER = new MapMaker().weakKeys();
-    
+
     /** Instrumentation API for interfacing with the JVM to determine which classes are loaded. */
     private final Instrumentation _instrumentation;
 
@@ -76,13 +79,22 @@ public class AnnotationMonitor {
 
     /**
      * Retrieve all of the annotated variables that the monitor has discovered that occur in classes that are visible to
-     * the provided class loader.
+     * the provided class loader.  The variables are provided in sorted order.
      */
     public List<Variable> getVariables(ClassLoader loader) {
         // Catch up with any queued work to make sure we give the most accurate picture possible
         processWorkQueue();
 
-        return _variableProcessor.getVariables(loader);
+        List<Variable> variables = _variableProcessor.getVariables(loader);
+        Collections.sort(variables, new Comparator<Variable>() {
+            @Override
+            public int compare(Variable a, Variable b) {
+                return ComparisonChain.start()
+                        .compare(a.getName(), b.getName())
+                        .result();
+            }
+        });
+        return variables;
     }
 
     /** Retrieve the formatter for the provided class. */

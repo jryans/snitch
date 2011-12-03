@@ -48,6 +48,7 @@ public class MonitoringAgent {
     private static AnnotationMonitor INSTANCE;
 
     /** Main entry point for the agent. */
+    @SuppressWarnings({"unchecked"})
     public static void premain(String agentArgs, Instrumentation instrumentation) {
         Collection<String> packages = Lists.newArrayList();
         Class<? extends Annotation> annotationClass = DEFAULT_ANNOTATION;
@@ -70,7 +71,6 @@ public class MonitoringAgent {
             } else if ("annotation".equals(name)) {
                 annotationClass = loadSubclass(value, Annotation.class);
             } else if ("naming".equals(name)) {
-                //noinspection unchecked
                 namingStrategy = newSubclassInstance(value, NamingStrategy.class);
             }
         }

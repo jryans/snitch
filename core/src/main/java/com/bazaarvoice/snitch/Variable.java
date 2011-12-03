@@ -22,6 +22,9 @@ public interface Variable {
     /** The name of this variable. */
     String getName();
 
+    /** The type of the variable. */
+    Class<?> getType();
+
     /** The value of the variable. */
     Object getValue();
 }

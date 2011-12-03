@@ -17,25 +17,12 @@ package com.bazaarvoice.snitch;
 
 import com.google.common.base.Throwables;
 import com.google.common.collect.Maps;
-import com.google.gson.stream.JsonWriter;
 
-import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.ConcurrentMap;
 
 public class FormatterClassProcessor implements ClassProcessor {
-    private static final Formatter TO_STRING_FORMATTER = new Formatter<Object>() {
-        @Override
-        public void format(Object obj, JsonWriter writer) throws IOException {
-            if (obj == null) {
-                writer.nullValue();
-            } else {
-                writer.value(obj.toString());
-            }
-        }
-    };
-
     private final ConcurrentMap<Class<?>, Formatter<?>> _formatters = Maps.newConcurrentMap();
 
     @Override
@@ -51,9 +38,9 @@ public class FormatterClassProcessor implements ClassProcessor {
 
     @SuppressWarnings({"unchecked"})
     public <T> Formatter<T> getFormatter(Class<T> cls) {
-        Formatter<T> formatter = (Formatter<T>) _formatters.putIfAbsent(cls, TO_STRING_FORMATTER);
+        Formatter formatter = _formatters.putIfAbsent(cls, ToStringFormatter.INSTANCE);
         if (formatter == null) {
-            formatter = TO_STRING_FORMATTER;
+            formatter = ToStringFormatter.INSTANCE;
         }
 
         return formatter;
