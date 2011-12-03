@@ -36,7 +36,7 @@ public class FormatterClassProcessorTest {
     }
 
     @Test
-    public void testFormattersWithDefaultConstructors() {
+    public void testFormatterWithDefaultConstructors() {
         @FormattedBy(FormatterWithSyntheticDefaultConstructor.class)
         class A implements Data {}
 
