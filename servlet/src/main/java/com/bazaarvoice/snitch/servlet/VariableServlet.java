@@ -19,10 +19,10 @@ import com.bazaarvoice.snitch.AnnotationMonitor;
 import com.bazaarvoice.snitch.Formatter;
 import com.bazaarvoice.snitch.MonitoringAgent;
 import com.bazaarvoice.snitch.Variable;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.io.Closeables;
 import com.google.gson.stream.JsonWriter;
 
-import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -32,19 +32,20 @@ import java.io.IOException;
 import java.util.List;
 
 public class VariableServlet extends HttpServlet {
-    public static final String ANNOTATION_MONITOR_ATTRIBUTE_NAME = "ANNOTATION_MONITOR";
-    private static final long serialVersionUID = 0;
+    private static final long serialVersionUID = 0L;
 
     private AnnotationMonitor _monitor;
 
-    @Override
-    public void init(ServletConfig config) throws ServletException {
-        super.init(config);
+    @VisibleForTesting
+    void setMonitor(AnnotationMonitor monitor) {
+        _monitor = monitor;
+    }
 
-        Object monitor = config.getServletContext().getAttribute(ANNOTATION_MONITOR_ATTRIBUTE_NAME);
-        _monitor = (monitor != null)
-                ? (AnnotationMonitor) monitor
-                : MonitoringAgent.getMonitor();
+    @Override
+    public void init() throws ServletException {
+        if (_monitor == null) {
+            _monitor = MonitoringAgent.getMonitor();
+        }
     }
 
     @Override
@@ -75,8 +76,8 @@ public class VariableServlet extends HttpServlet {
      * Adds headers to the response which will keep the end-user's browser from caching the response.  Since these
      * values can update each time the servlet is invoked we don't want the browser or query tool to cache values.
      *
-     * @see <a href="http://www.mnot.net/cache_docs">"Caching Tutorial"</a> for an explanation of all the cache control
-     *      headers
+     * @see <a href="http://www.mnot.net/cache_docs">"Caching Tutorial"</a> for an explanation of all the cache
+     * control headers
      */
     private void addClientNoCacheHeaders(HttpServletResponse response) {
         // HTTP 1.0 header

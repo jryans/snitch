@@ -16,18 +16,18 @@
 package com.bazaarvoice.snitch.servlet;
 
 import com.bazaarvoice.snitch.AnnotationMonitor;
+import com.bazaarvoice.snitch.Formatter;
 import com.bazaarvoice.snitch.ToStringFormatter;
 import com.bazaarvoice.snitch.Variable;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
+import com.google.gson.stream.JsonWriter;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Matchers;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -45,37 +45,34 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class VariableServletTest {
-    /** The registered variables for a test. */
-    private List<Variable> _variables;
-
-    /** The writer that the servlet writes its output to. */
-    private StringWriter _output;
-
     private VariableServlet _servlet;
+
+    // Mocks
+    private AnnotationMonitor _monitor;
     private HttpServletRequest _request;
     private HttpServletResponse _response;
 
+    // Helpers
+    private List<Variable> _variables;
+    private StringWriter _output;
+
     @Before
+    @SuppressWarnings({"unchecked"})
     public void setup() throws ServletException, IOException {
         _variables = Lists.newArrayList();
         _output = new StringWriter();
 
-        AnnotationMonitor monitor = mock(AnnotationMonitor.class);
-        when(monitor.getFormatter(Matchers.<Class<Object>>any())).thenReturn(ToStringFormatter.INSTANCE);
-        when(monitor.getVariables(any(ClassLoader.class))).thenReturn(_variables);
-
-        ServletContext context = mock(ServletContext.class);
-        when(context.getAttribute(VariableServlet.ANNOTATION_MONITOR_ATTRIBUTE_NAME)).thenReturn(monitor);
-
-        ServletConfig config = mock(ServletConfig.class);
-        when(config.getServletContext()).thenReturn(context);
-
-        _servlet = new VariableServlet();
-        _servlet.init(config);
+        _monitor = mock(AnnotationMonitor.class);
+        when(_monitor.getFormatter(Matchers.<Class>any())).thenReturn(ToStringFormatter.INSTANCE);
+        when(_monitor.getVariables(any(ClassLoader.class))).thenReturn(_variables);
 
         _request = mock(HttpServletRequest.class);
         _response = mock(HttpServletResponse.class);
         when(_response.getWriter()).thenReturn(new PrintWriter(_output));
+
+        // Finally initialize the servlet
+        _servlet = new VariableServlet();
+        _servlet.setMonitor(_monitor);
     }
 
     @Test
@@ -136,20 +133,39 @@ public class VariableServletTest {
         assertVariablesInJson(_output.toString(), a, b, c, d, e, f);
     }
 
-    private <T> Variable defineVariable(String name, final T value) {
-        return defineVariable(name, value, value.getClass());
+    @Test
+    public void testCustomFormatter() throws IOException, ServletException {
+        // Define a custom formatter that negates integers when emitting them and register it for formatting Integers
+        Formatter<Integer> formatter = new Formatter<Integer>() {
+            @Override
+            public void format(Integer obj, JsonWriter writer) throws IOException {
+                writer.value(-obj);
+            }
+        };
+        when(_monitor.getFormatter(Integer.class)).thenReturn(formatter);
+
+        Variable a = defineVariable("a", 1);
+        _servlet.doGet(_request, _response);
+
+        Map<String, Object> m = parseJson(_output.toString());
+        assertTypedEquals(Integer.class, -1*((Integer) a.getValue()), m.get(a.getName()));
     }
 
-    private <T> Variable defineVariable(String name, T value, final Class<?> type) {
+    @SuppressWarnings({"unchecked"})
+    private <T> Variable defineVariable(String name, final T value) {
+        return defineVariable(name, value, (Class<T>) value.getClass());
+    }
+
+    private <T> Variable defineVariable(String name, T value, final Class<T> type) {
         Variable v = mock(Variable.class);
         when(v.getName()).thenReturn(name);
         when(v.getValue()).thenReturn(value);
 
         // For some reason the type inference doesn't work properly if we call thenReturn, so we use thenAnswer
         // instead and always return the class value (e.g. T).
-        when(v.getType()).thenAnswer(new Answer<Class<?>>() {
+        when(v.getType()).thenAnswer(new Answer<Class<T>>() {
             @Override
-            public Class<?> answer(InvocationOnMock invocation) throws Throwable {
+            public Class<T> answer(InvocationOnMock invocation) throws Throwable {
                 return type;
             }
         });
@@ -158,40 +174,47 @@ public class VariableServletTest {
         return v;
     }
 
-    private void assertVariablesInJson(String json, Variable... vars) {
-        Map m = new Gson().fromJson(json, Map.class);
+    @SuppressWarnings({"unchecked"})
+    private Map<String, Object> parseJson(String json) {
+        return new Gson().fromJson(json, Map.class);
+    }
 
+    private void assertVariablesInJson(String json, Variable... vars) {
+        Map<String, Object> m = parseJson(json);
         for (Variable v : vars) {
+            Class<?> type = v.getType();
+            Object expectedValue = v.getValue();
             Object actualValue = m.get(v.getName());
-            assertVariableValueEquals(v, actualValue);
+            assertTypedEquals(type, expectedValue, actualValue);
         }
     }
 
-    private void assertVariableValueEquals(Variable expected, Object actual) {
+    /**
+     * Checks two variables for equality, but first converts {@code actual} from a Gson return type to the
+     * same type as {@code expected}.
+     */
+    private void assertTypedEquals(Class<?> type, Object expected, Object actual) {
         // Json primitives are only strings, numbers (long and double), booleans, and nulls
-        Object value = expected.getValue();
-        Class type = expected.getType();
-
-        if (value == null) {
-            assertEquals(value, actual);
-        } else if (byte.class.equals(type) || Byte.class.equals(type)) {
-            assertEquals(value, ((Number) actual).byteValue());
-        } else if (double.class.equals(type) || Double.class.equals(type)) {
-            assertEquals(value, ((Number) actual).doubleValue());
-        } else if (float.class.equals(type) || Float.class.equals(type)) {
-            assertEquals(value, ((Number) actual).floatValue());
-        } else if (int.class.equals(type) || Integer.class.equals(type)) {
-            assertEquals(value, ((Number) actual).intValue());
-        } else if (long.class.equals(type) || Long.class.equals(type)) {
-            assertEquals(value, ((Number) actual).longValue());
-        } else if (short.class.equals(type) || Short.class.equals(type)) {
-            assertEquals(value, ((Number) actual).shortValue());
+        if (expected == null) {
+            assertEquals(expected, actual);
         } else if (boolean.class.equals(type) || Boolean.class.equals(type)) {
-            assertEquals(value, actual);
+            assertEquals(expected, actual);
+        } else if (byte.class.equals(type) || Byte.class.equals(type)) {
+            assertEquals(expected, ((Number) actual).byteValue());
+        } else if (double.class.equals(type) || Double.class.equals(type)) {
+            assertEquals(expected, ((Number) actual).doubleValue());
+        } else if (float.class.equals(type) || Float.class.equals(type)) {
+            assertEquals(expected, ((Number) actual).floatValue());
+        } else if (int.class.equals(type) || Integer.class.equals(type)) {
+            assertEquals(expected, ((Number) actual).intValue());
+        } else if (long.class.equals(type) || Long.class.equals(type)) {
+            assertEquals(expected, ((Number) actual).longValue());
+        } else if (short.class.equals(type) || Short.class.equals(type)) {
+            assertEquals(expected, ((Number) actual).shortValue());
         } else if (String.class.equals(type)) {
-            assertEquals(value, actual);
+            assertEquals(expected, actual);
         } else {
-            fail();
+            fail("Unrecognized type: " + type);
         }
     }
 }
