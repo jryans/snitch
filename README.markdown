@@ -12,19 +12,21 @@ Usage
 Using Snitch is incredibly easy and is best illustrated by an example.  Suppose you've created a service and you'd like
 to use Snitch to keep track of the number of requests that have been processed by it:
 
-    import java.util.concurrent.atomic.AtomicLong;
-    import org.bazaarvoice.snitch.Monitored;
+```java
+import java.util.concurrent.atomic.AtomicLong;
+import org.bazaarvoice.snitch.Monitored;
 
-    public class MyService {
-      @Monitored("request-count")
-      private static final AtomicLong HANDLED_REQUEST_COUNT = new AtomicLong();
+public class MyService {
+  @Monitored("request-count")
+  private static final AtomicLong HANDLED_REQUEST_COUNT = new AtomicLong();
 
-      public void handleRequest() {
-        HANDLED_REQUEST_COUNT.incrementAndGet();
+  public void handleRequest() {
+    HANDLED_REQUEST_COUNT.incrementAndGet();
 
-        // ... handle the request ...
-      }
-    }
+    // ... handle the request ...
+  }
+}
+```
 
 It's as simple as that.  Snitch is annotation based and anything that is marked with the ```@Monitored``` annotation
 will be found and monitored by it.
@@ -32,23 +34,25 @@ will be found and monitored by it.
 Snitch will also look for methods that are tagged with the ```@Monitored``` annotation
 as well and monitor their return values as well.  The above example could have also been written:
 
-    import java.util.concurrent.atomic.AtomicLong;
-    import org.bazaarvoice.snitch.Monitored;
+```java
+import java.util.concurrent.atomic.AtomicLong;
+import org.bazaarvoice.snitch.Monitored;
 
-    public class MyService {
-      private static final AtomicLong HANDLED_REQUEST_COUNT = new AtomicLong();
+public class MyService {
+  private static final AtomicLong HANDLED_REQUEST_COUNT = new AtomicLong();
 
-      @Monitored("request-count")
-      private long getHandledRequestCount() {
-        return HANDLED_REQUEST_COUNT.get();
-      }
+  @Monitored("request-count")
+  private long getHandledRequestCount() {
+    return HANDLED_REQUEST_COUNT.get();
+  }
 
-      public void handleRequest() {
-        HANDLED_REQUEST_COUNT.incrementAndGet();
+  public void handleRequest() {
+    HANDLED_REQUEST_COUNT.incrementAndGet();
 
-        // ... handle the request ...
-      }
-    }
+    // ... handle the request ...
+  }
+}
+```
 
 In order to enable Snitch in a JVM, the JVM must be started with the Snitch java agent.
 The java agent gives Snitch the ability to find fields and methods marked with the annotation.  To start a JVM with the
