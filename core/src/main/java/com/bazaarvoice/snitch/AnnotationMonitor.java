@@ -56,7 +56,10 @@ public class AnnotationMonitor {
     /** The set of classes that have already been processed and should never be re-processed again. */
     private final Set<Class<?>> _processedClasses = Sets.newSetFromMap(WEAK_KEY_MAP_MAKER.<Class<?>, Boolean>makeMap());
 
+    /** Class processor that scans for methods and fields to monitor. */
     private final VariableClassProcessor _variableProcessor;
+
+    /** Class processor that scans for formatter annotations. */
     private final FormatterClassProcessor _formatterProcessor;
 
     public AnnotationMonitor(Instrumentation instrumentation, Collection<String> packages,
