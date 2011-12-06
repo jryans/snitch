@@ -119,7 +119,7 @@ public class AnnotationMonitor {
 
         for (ClassLoader loader : _dirtyLoaders.removeAll()) {
             for (Class cls : _instrumentation.getInitiatedClasses(loader)) {
-                if (!_processedClasses.add(cls) || !isClassInMonitoredPackage(cls)) {
+                if (cls.getClassLoader() != loader || !_processedClasses.add(cls) || !isClassInMonitoredPackage(cls)) {
                     continue;
                 }
 
