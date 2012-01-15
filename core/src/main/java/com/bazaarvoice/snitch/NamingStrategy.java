@@ -1,5 +1,5 @@
 /*
- * Copyright 2011 Bazaarvoice
+ * Copyright (c) 2012 Bazaarvoice
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
  */
 package com.bazaarvoice.snitch;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
@@ -23,10 +22,12 @@ import java.lang.reflect.Method;
  * Encapsulates the algorithm used to determine the name that an annotated field or
  * method should be associated with.
  */
-public interface NamingStrategy<A extends Annotation> {
+public interface NamingStrategy {
+
     /** Returns the name of an annotated field. */
-    String getName(Field field, A annotation);
+    String getName(Field field);
 
     /** Returns the name of an annotated method. */
-    String getName(Method method, A annotation);
+    String getName(Method method);
+
 }

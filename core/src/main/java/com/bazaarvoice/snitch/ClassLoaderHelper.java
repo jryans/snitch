@@ -17,7 +17,7 @@ package com.bazaarvoice.snitch;
 
 import com.google.common.base.Throwables;
 
-import java.lang.reflect.InvocationTargetException;
+import javax.annotation.Nullable;
 import java.lang.reflect.Method;
 
 /**
@@ -34,7 +34,11 @@ public class ClassLoaderHelper {
     private final Method _findLoadedClassMethod;
 
     public ClassLoaderHelper() {
-        _loader = ClassLoader.getSystemClassLoader();
+        this(ClassLoader.getSystemClassLoader());
+    }
+
+    public ClassLoaderHelper(ClassLoader loader) {
+        _loader = loader;
 
         try {
             _findLoadedClassMethod = ClassLoader.class.getDeclaredMethod("findLoadedClass", String.class);
@@ -46,13 +50,21 @@ public class ClassLoaderHelper {
 
     /** Determine whether or not a class has been loaded. */
     public boolean isClassLoaded(String className) {
+        return findLoadedClass(className) != null;
+    }
+
+    /**
+     * Finds the given class if it's already loaded in the class loader.
+     *
+     * @return The class if loaded, otherwise <tt>null</tt>
+     */
+    @Nullable
+    public <T extends Class<?>> T findLoadedClass(String className) {
         try {
-            Class<?> cls = (Class<?>) _findLoadedClassMethod.invoke(_loader, className);
-            return cls != null;
-        } catch (IllegalAccessException e) {
-            return false;
-        } catch (InvocationTargetException e) {
-            return false;
+            //noinspection unchecked
+            return (T) _findLoadedClassMethod.invoke(_loader, className);
+        } catch (Exception e) {
+            throw Throwables.propagate(e);
         }
     }
 }

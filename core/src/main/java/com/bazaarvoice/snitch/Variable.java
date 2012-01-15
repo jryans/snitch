@@ -15,7 +15,8 @@
  */
 package com.bazaarvoice.snitch;
 
-public interface Variable {
+public interface Variable<T> {
+
     /** The class that contained the annotated entity that this variable was created for. */
     Class<?> getOwner();
 
@@ -23,8 +24,9 @@ public interface Variable {
     String getName();
 
     /** The type of the variable. */
-    Class<?> getType();
+    Class<T> getType();
 
     /** The value of the variable. */
-    Object getValue();
+    T getValue();
+
 }

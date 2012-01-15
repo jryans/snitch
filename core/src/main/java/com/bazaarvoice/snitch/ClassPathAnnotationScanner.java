@@ -187,7 +187,11 @@ public class ClassPathAnnotationScanner {
         }
     }
 
-    public static final class MethodEntry {
+    public interface ClassMemberEntry {
+        String getClassName();
+    }
+
+    public static final class MethodEntry implements ClassMemberEntry {
         private final String _className;
         private final String _methodName;
 
@@ -233,7 +237,7 @@ public class ClassPathAnnotationScanner {
         }
     }
 
-    public static final class FieldEntry {
+    public static final class FieldEntry implements ClassMemberEntry {
         private final String _className;
         private final String _fieldName;
 

@@ -18,6 +18,8 @@ package com.bazaarvoice.snitch;
 import org.junit.Test;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class ClassLoaderHelperTest {
@@ -30,15 +32,18 @@ public class ClassLoaderHelperTest {
     @Test
     public void testClassThatDoesNotExist() {
         assertFalse(_helper.isClassLoaded(CLASS_NAME_THAT_DOES_NOT_EXIST));
+        assertNull(_helper.findLoadedClass(CLASS_NAME_THAT_DOES_NOT_EXIST));
     }
 
     @Test
     public void testClassThatIsNotLoaded() {
         assertFalse(_helper.isClassLoaded(CLASS_NAME_THAT_IS_NOT_LOADED));
+        assertNull(_helper.findLoadedClass(CLASS_NAME_THAT_IS_NOT_LOADED));
     }
 
     @Test
     public void testClassThatIsLoaded() {
         assertTrue(_helper.isClassLoaded(CLASS_NAME_THAT_IS_LOADED));
+        assertNotNull(_helper.findLoadedClass(CLASS_NAME_THAT_IS_LOADED));
     }
 }
