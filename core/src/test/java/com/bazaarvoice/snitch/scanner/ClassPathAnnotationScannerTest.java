@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.bazaarvoice.snitch;
+package com.bazaarvoice.snitch.scanner;
 
 import org.junit.Test;
 
@@ -24,11 +24,7 @@ import java.lang.annotation.Target;
 import java.util.Collection;
 import java.util.List;
 
-import static com.bazaarvoice.snitch.ClassPathAnnotationScanner.ClassEntry;
-import static com.bazaarvoice.snitch.ClassPathAnnotationScanner.FieldEntry;
-import static com.bazaarvoice.snitch.ClassPathAnnotationScanner.MethodEntry;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class ClassPathAnnotationScannerTest {
     private static final String PACKAGE_NAME = ClassPathAnnotationScannerTest.class.getPackage().getName();
@@ -41,13 +37,13 @@ public class ClassPathAnnotationScannerTest {
 
     @Test
     public void testAnnotatedClasses() {
-        Collection<ClassEntry> entries = _scanner.getClassesAnnotatedWith(Foo.class);
+        Collection<AnnotationScanner.ClassEntry> entries = _scanner.getClassesAnnotatedWith(Foo.class);
         assertContainsType(entries, TestClass.class);
     }
 
     @Test
     public void testAnnotatedInnerClasses() {
-        Collection<ClassEntry> entries = _scanner.getClassesAnnotatedWith(Foo.class);
+        Collection<AnnotationScanner.ClassEntry> entries = _scanner.getClassesAnnotatedWith(Foo.class);
         assertContainsType(entries, TestClass.PublicFoo.class);
         assertContainsType(entries, TestClass.PackageFoo.class);
         assertContainsType(entries, TestClass.ProtectedFoo.class);
@@ -60,7 +56,7 @@ public class ClassPathAnnotationScannerTest {
 
     @Test
     public void testAnnotatedStaticInnerClasses() {
-        Collection<ClassEntry> entries = _scanner.getClassesAnnotatedWith(Foo.class);
+        Collection<AnnotationScanner.ClassEntry> entries = _scanner.getClassesAnnotatedWith(Foo.class);
         assertContainsType(entries, TestClass.PublicStaticFoo.class);
         assertContainsType(entries, TestClass.PackageStaticFoo.class);
         assertContainsType(entries, TestClass.ProtectedStaticFoo.class);
@@ -73,7 +69,7 @@ public class ClassPathAnnotationScannerTest {
 
     @Test
     public void testAnnotatedMethods() {
-        Collection<MethodEntry> entries = _scanner.getMethodsAnnotatedWith(Foo.class);
+        Collection<AnnotationScanner.MethodEntry> entries = _scanner.getMethodsAnnotatedWith(Foo.class);
         assertContainsMethod(entries, TestClass.class, "publicFoo");
         assertContainsMethod(entries, TestClass.class, "packageFoo");
         assertContainsMethod(entries, TestClass.class, "protectedFoo");
@@ -86,7 +82,7 @@ public class ClassPathAnnotationScannerTest {
 
     @Test
     public void testAnnotatedStaticMethods() {
-        Collection<MethodEntry> entries = _scanner.getMethodsAnnotatedWith(Foo.class);
+        Collection<AnnotationScanner.MethodEntry> entries = _scanner.getMethodsAnnotatedWith(Foo.class);
         assertContainsMethod(entries, TestClass.class, "publicStaticFoo");
         assertContainsMethod(entries, TestClass.class, "packageStaticFoo");
         assertContainsMethod(entries, TestClass.class, "protectedStaticFoo");
@@ -99,7 +95,7 @@ public class ClassPathAnnotationScannerTest {
 
     @Test
     public void testAnnotatedFields() {
-        Collection<FieldEntry> entries = _scanner.getFieldsAnnotatedWith(Foo.class);
+        Collection<AnnotationScanner.FieldEntry> entries = _scanner.getFieldsAnnotatedWith(Foo.class);
         assertContainsField(entries, TestClass.class, "publicFoo");
         assertContainsField(entries, TestClass.class, "packageFoo");
         assertContainsField(entries, TestClass.class, "protectedFoo");
@@ -112,7 +108,7 @@ public class ClassPathAnnotationScannerTest {
 
     @Test
     public void testAnnotatedStaticFields() {
-        Collection<FieldEntry> entries = _scanner.getFieldsAnnotatedWith(Foo.class);
+        Collection<AnnotationScanner.FieldEntry> entries = _scanner.getFieldsAnnotatedWith(Foo.class);
         assertContainsField(entries, TestClass.class, "publicStaticFoo");
         assertContainsField(entries, TestClass.class, "packageStaticFoo");
         assertContainsField(entries, TestClass.class, "protectedStaticFoo");
@@ -125,55 +121,76 @@ public class ClassPathAnnotationScannerTest {
 
     @Test(expected = UnsupportedOperationException.class)
     public void testClassEntriesImmutable() {
-        List<ClassEntry> entries = _scanner.getClassesAnnotatedWith(Foo.class);
+        List<AnnotationScanner.ClassEntry> entries = _scanner.getClassesAnnotatedWith(Foo.class);
         entries.clear();
     }
 
     @Test(expected = UnsupportedOperationException.class)
     public void testMethodEntriesImmutable() {
-        List<MethodEntry> entries = _scanner.getMethodsAnnotatedWith(Foo.class);
+        List<AnnotationScanner.MethodEntry> entries = _scanner.getMethodsAnnotatedWith(Foo.class);
         entries.clear();
     }
 
     @Test(expected = UnsupportedOperationException.class)
     public void testFieldEntriesImmutable() {
-        List<FieldEntry> entries = _scanner.getFieldsAnnotatedWith(Foo.class);
+        List<AnnotationScanner.FieldEntry> entries = _scanner.getFieldsAnnotatedWith(Foo.class);
         entries.clear();
     }
 
-    private static void assertContainsType(Collection<ClassEntry> entries, Class<?> cls) {
-        ClassEntry entry = new ClassEntry(cls.getName());
-        assertTrue(entries.contains(entry));
+    private static void assertContainsType(Collection<AnnotationScanner.ClassEntry> entries, Class<?> cls) {
+        for (AnnotationScanner.ClassEntry entry : entries) {
+            if (cls.getName().equals(entry.getClassName())) {
+                return;
+            }
+        }
+        fail();
     }
 
-    private static void assertNotContainsType(Collection<ClassEntry> entries, Class<?> cls) {
-        ClassEntry entry = new ClassEntry(cls.getName());
-        assertFalse(entries.contains(entry));
+    private static void assertNotContainsType(Collection<AnnotationScanner.ClassEntry> entries, Class<?> cls) {
+        for (AnnotationScanner.ClassEntry entry : entries) {
+            if (cls.getName().equals(entry.getClassName())) {
+                fail();
+            }
+        }
     }
 
-    private static void assertContainsMethod(Collection<MethodEntry> entries, Class<?> cls, String methodName) {
-        MethodEntry entry = new MethodEntry(cls.getName(), methodName);
-        assertTrue(entries.contains(entry));
+    private static void assertContainsMethod(Collection<AnnotationScanner.MethodEntry> entries, Class<?> cls, String methodName) {
+        for (AnnotationScanner.MethodEntry entry : entries) {
+            if (cls.getName().equals(entry.getClassName()) && methodName.equals(entry.getMethodName())) {
+                return;
+            }
+        }
+        fail();
     }
 
-    private static void assertNotContainsMethod(Collection<MethodEntry> entries, Class<?> cls, String methodName) {
-        MethodEntry entry = new MethodEntry(cls.getName(), methodName);
-        assertFalse(entries.contains(entry));
+    private static void assertNotContainsMethod(Collection<AnnotationScanner.MethodEntry> entries, Class<?> cls, String methodName) {
+        for (AnnotationScanner.MethodEntry entry : entries) {
+            if (cls.getName().equals(entry.getClassName()) && methodName.equals(entry.getMethodName())) {
+                fail();
+            }
+        }
     }
 
-    private static void assertContainsField(Collection<FieldEntry> entries, Class<?> cls, String fieldName) {
-        FieldEntry entry = new FieldEntry(cls.getName(), fieldName);
-        assertTrue(entries.contains(entry));
+    private static void assertContainsField(Collection<AnnotationScanner.FieldEntry> entries, Class<?> cls, String fieldName) {
+        for (AnnotationScanner.FieldEntry entry : entries) {
+            if (cls.getName().equals(entry.getClassName()) && fieldName.equals(entry.getFieldName())) {
+                return;
+            }
+        }
+        fail();
     }
 
-    private static void assertNotContainsField(Collection<FieldEntry> entries, Class<?> cls, String fieldName) {
-        FieldEntry entry = new FieldEntry(cls.getName(), fieldName);
-        assertFalse(entries.contains(entry));
+    private static void assertNotContainsField(Collection<AnnotationScanner.FieldEntry> entries, Class<?> cls, String fieldName) {
+        for (AnnotationScanner.FieldEntry entry : entries) {
+            if (cls.getName().equals(entry.getClassName()) && fieldName.equals(entry.getFieldName())) {
+                fail();
+            }
+        }
     }
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.FIELD, ElementType.METHOD, ElementType.TYPE})
-    public @interface Foo {}
+    private static @interface Foo {}
 
     @SuppressWarnings("UnusedDeclaration")
     @Foo

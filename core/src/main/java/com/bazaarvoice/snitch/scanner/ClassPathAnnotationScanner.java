@@ -13,10 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.bazaarvoice.snitch;
+package com.bazaarvoice.snitch.scanner;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Objects;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableListMultimap;
@@ -31,7 +29,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
-public class ClassPathAnnotationScanner {
+public class ClassPathAnnotationScanner implements AnnotationScanner {
     private final String[] _packageNames;
 
     /** The set of annotations to scan for. */
@@ -50,6 +48,22 @@ public class ClassPathAnnotationScanner {
     private volatile ListMultimap<Class<? extends Annotation>, FieldEntry> _fieldEntries = ImmutableListMultimap.of();
 
     public ClassPathAnnotationScanner(String... packageNames) {
+        if (packageNames.length == 0) {
+            // As a heuristic load scan all of the packages that have had classes loaded already...
+            Package[] packages = Package.getPackages();
+            
+            packageNames = new String[packages.length];
+            for(int i = 0; i < packages.length; i++) {
+                packageNames[i] = packages[i].getName();
+            }
+        }
+        
+        if (packageNames.length == 0) {
+            // All attempts to find a reasonable set of packages have failed, use some common ones as a best attempt to
+            // make Snitch work in most environments.
+            packageNames = new String[] { "com", "org", "edu", "net" };
+        }
+        
         _packageNames = Arrays.copyOf(packageNames, packageNames.length);
     }
 
@@ -123,17 +137,17 @@ public class ClassPathAnnotationScanner {
 
         @Override
         public void reportTypeAnnotation(Class<? extends Annotation> annotation, String clsName) {
-            _typeAnnotations.put(annotation, new ClassEntry(clsName));
+            _typeAnnotations.put(annotation, new com.bazaarvoice.snitch.scanner.ClassEntry(clsName));
         }
 
         @Override
         public void reportMethodAnnotation(Class<? extends Annotation> annotation, String clsName, String methodName) {
-            _methodAnnotations.put(annotation, new MethodEntry(clsName, methodName));
+            _methodAnnotations.put(annotation, new com.bazaarvoice.snitch.scanner.MethodEntry(clsName, methodName));
         }
 
         @Override
         public void reportFieldAnnotation(Class<? extends Annotation> annotation, String clsName, String fieldName) {
-            _fieldAnnotations.put(annotation, new FieldEntry(clsName, fieldName));
+            _fieldAnnotations.put(annotation, new com.bazaarvoice.snitch.scanner.FieldEntry(clsName, fieldName));
         }
 
         public ListMultimap<Class<? extends Annotation>, ClassEntry> getTypeAnnotations() {
@@ -146,136 +160,6 @@ public class ClassPathAnnotationScanner {
 
         public ListMultimap<Class<? extends Annotation>, FieldEntry> getFieldAnnotations() {
             return Multimaps.unmodifiableListMultimap(_fieldAnnotations);
-        }
-    }
-
-    public static final class ClassEntry {
-        private final String _className;
-
-        @VisibleForTesting
-        ClassEntry(String className) {
-            _className = className;
-        }
-
-        public String getClassName() {
-            return _className;
-        }
-
-        @Override
-        public int hashCode() {
-            return _className.hashCode();
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (!(obj instanceof ClassEntry)) {
-                return false;
-            }
-
-            ClassEntry that = (ClassEntry) obj;
-            return Objects.equal(_className, that._className);
-        }
-
-        @Override
-        public String toString() {
-            return Objects.toStringHelper(this)
-                    .add("className", _className)
-                    .toString();
-        }
-    }
-
-    public static final class MethodEntry {
-        private final String _className;
-        private final String _methodName;
-
-        @VisibleForTesting
-        MethodEntry(String className, String methodName) {
-            _className = className;
-            _methodName = methodName;
-        }
-
-        public String getClassName() {
-            return _className;
-        }
-
-        public String getMethodName() {
-            return _methodName;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hashCode(_className, _methodName);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (!(obj instanceof MethodEntry)) {
-                return false;
-            }
-
-            MethodEntry that = (MethodEntry) obj;
-            return Objects.equal(_className, that._className) &&
-                    Objects.equal(_methodName, that._methodName);
-        }
-
-        @Override
-        public String toString() {
-            return Objects.toStringHelper(this)
-                    .add("className", _className)
-                    .add("methodName", _methodName)
-                    .toString();
-        }
-    }
-
-    public static final class FieldEntry {
-        private final String _className;
-        private final String _fieldName;
-
-        @VisibleForTesting
-        FieldEntry(String className, String fieldName) {
-            _className = className;
-            _fieldName = fieldName;
-        }
-
-        public String getClassName() {
-            return _className;
-        }
-
-        public String getFieldName() {
-            return _fieldName;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hashCode(_className, _fieldName);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (!(obj instanceof FieldEntry)) {
-                return false;
-            }
-
-            FieldEntry that = (FieldEntry) obj;
-            return Objects.equal(_className, that._className) &&
-                    Objects.equal(_fieldName, that._fieldName);
-        }
-
-        @Override
-        public String toString() {
-            return Objects.toStringHelper(this)
-                    .add("className", _className)
-                    .add("fieldName", _fieldName)
-                    .toString();
         }
     }
 }

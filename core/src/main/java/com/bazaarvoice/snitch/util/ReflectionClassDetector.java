@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.bazaarvoice.snitch;
+package com.bazaarvoice.snitch.util;
 
 import com.google.common.base.Throwables;
 
@@ -29,11 +29,11 @@ import java.lang.reflect.Method;
  * there really isn't a better way to do this without forcing the entire application to load all classes with a custom
  * class loader or requiring the use of a java agent.
  */
-public class ClassLoaderHelper {
+public class ReflectionClassDetector implements ClassDetector {
     private final ClassLoader _loader;
     private final Method _findLoadedClassMethod;
 
-    public ClassLoaderHelper() {
+    public ReflectionClassDetector() {
         _loader = ClassLoader.getSystemClassLoader();
 
         try {
@@ -44,7 +44,6 @@ public class ClassLoaderHelper {
         }
     }
 
-    /** Determine whether or not a class has been loaded. */
     public boolean isClassLoaded(String className) {
         try {
             Class<?> cls = (Class<?>) _findLoadedClassMethod.invoke(_loader, className);
@@ -53,6 +52,15 @@ public class ClassLoaderHelper {
             return false;
         } catch (InvocationTargetException e) {
             return false;
+        }
+    }
+    
+    public Class<?> getLoadedClass(String className) {
+        // Our caller knows that we may trigger the class to be loaded so calling Class.forName should be okay.
+        try {
+            return Class.forName(className);
+        } catch (ClassNotFoundException e) {
+            return null;
         }
     }
 }
