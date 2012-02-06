@@ -31,6 +31,10 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.util.Collection;
 
+/**
+ * Servlet implementation for Snitch that allows the monitored variables to be accessed.  This implementation will emit
+ * variables in JSON.
+ */
 public class VariableServlet extends HttpServlet {
     private static final long serialVersionUID = 0L;
     private final Snitch _snitch = Snitch.getInstance();
@@ -39,6 +43,7 @@ public class VariableServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse response) throws ServletException, IOException {
         addClientNoCacheHeaders(response);
+        response.setContentType("application/json");
 
         // Organize the variables into a multimap indexed by key
         Multimap<String, Variable> variables = HashMultimap.create();
