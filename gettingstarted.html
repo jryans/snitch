@@ -36,10 +36,9 @@
             <ul class="nav nav-list">
               <li class="nav-header">Getting Started</li>
               <li><a href="#maven">Maven setup</a></li>
-              <li><a href="#annotations">Annotations</a></li>
-              <li><a href="#maven">Maven setup</a></li>
-              <li><a href="#maven">Maven setup</a></li>
-              <li><a href="#maven">Maven setup</a></li>
+              <li><a href="#annotations">Static annotations</a></li>
+              <li><a href="#instances">Instance registration</a></li>
+              <li><a href="#servlet">Servlet output</a></li>
             </ul>
           </div>
         </div>
@@ -51,13 +50,13 @@
             <pre class="prettyprint">
 &lt;dependency&gt;
   &lt;groupId&gt;com.bazaarvoice.snitch&lt;/groupId&gt;
-  &lt;artifactId&gt;snitch&lt;/artifactId&gt;
-  &lt;version&gt;0.8.0&lt;/version&gt;
+  &lt;artifactId&gt;snitch-core&lt;/artifactId&gt;
+  &lt;version&gt;0.8.1&lt;/version&gt;
 &lt;/dependency&gt;</pre>
           </p>
           
           <p id="annotations">
-            <h2>Annotations</h2>
+            <h2>Static annotations</h2>
             Using Snitch is incredibly easy.  In your code, mark the fields that you would like to be exposed by
             Snitch with the <code>@Monitored</code> annotation.  Snitch will then do all of the hard work in locating
             and exposing them at runtime.  The simplest case is when the field that is annotated is static.
@@ -75,23 +74,9 @@ public class MyService {
 </pre>
             It's as simple as that.  Snitch will find the <code>NUM_REQUESTS</code> field at runtime and expose it's
             value to the outside world.  As the value contained in the field changes, so will the value that Snitch
-            exposes.
-            <p/>
-            If you'd like to control the name that Snitch uses for the field, the <code>@Monitored</code> annotation
-            accepts a string argument that allows you to specify it.  Snitch will then use the specified name whenever
-            it outputs the field.
-            <p/>
-            <pre class="prettyprint">
-public class MyService {
-  @Monitored("number-of-handled-requests")
-  private static final AtomicLong NUM_REQUESTS = new AtomicLong();
-
-  public void handleRequest() {
-    NUM_REQUESTS.incrementAndGet();
-    // ... handle the request ...
-  }
-}
-</pre>
+            exposes.  In addition if you'd like to control the name that Snitch uses for the field, the 
+            <code>@Monitored</code> annotation accepts an optional string argument that allows you to specify it.  
+            Snitch will then use the specified name whenever it outputs the field.
             <p/>
             Snitch also works with annotated methods.  If a method is annotated with the <code>@Monitored</code> annotation
             then Snitch will expose the return value of that method to the outside world as well.  The annotated method
@@ -104,7 +89,7 @@ public class MyService {
   private static final AtomicLong NUM_REQUESTS = new AtomicLong();
 
   @Monitored("number-of-handled-requests")
-  public void getNumRequests() {
+  public static void getNumRequests() {
     return NUM_REQUESTS.get();
   }
   
@@ -115,8 +100,70 @@ public class MyService {
 }
 </pre>
           </p>
+          
+          <p id="instances">
+            <h2>Instances with annotations</h2>
+            Often times it's not possible to make all of the fields and methods that should be monitored by Snitch static.
+            Snitch supports you in these cases as well and has the ability to work with non-statics as well.  It does
+            however require a bit more work on your part.  In order to allow Snitch to see your instances you need to
+            register them with it.
+            <p/>
+            <pre class="prettyprint">
+              
+              
+EXAMPLE TO GO HERE
+
+
+
+</pre>
+            <p/>
+          </p>
+          
+          <p id="servlet">
+            <h2>Output using the Snitch servlet</h2>
+            Snitch provides a servlet that can be used to view the values of methods and fields that are being monitored
+            by Snitch.  In order to use the servlet, you must first update your <code>pom.xml</code> to include the
+            <code>snitch-servlet</code> artifact.
+            <p/>
+            <pre class="prettyprint">
+&lt;dependency&gt;
+  &lt;groupId&gt;com.bazaarvoice.snitch&lt;/groupId&gt;
+  &lt;artifactId&gt;snitch-servlet&lt;/artifactId&gt;
+  &lt;version&gt;0.8.1&lt;/version&gt;
+&lt;/dependency&gt;</pre>
+</pre>
+            <p/>
+            Once you have the Snitch servlet jar available you can bind the 
+            <code>com.bazaarvoice.snitch.servlet.VariableServlet</code> servlet to any path you choose.
+            <p/>
+            <span class="label label-important">Warning</span>
+            The servlet can expose details of the system that may not be appropriate for end-users to see.  It is <i>strongly</i>
+            recommended that the <code>VariableServlet</code> be accessible only via the LAN facing side of your production
+            network.
+            <p/>
+            With the Snitch servlet in place you can navigate to it using any HTTP client to see the state of any monitored
+            fields or methods in the system.  Here's what an example of Snitch output looks like.
+            <p/>
+            <pre class="prettyprint">
+{
+  "num-of-served-requests": 284818,
+  "num-of-unhandled-exceptions": 12,
+  "last-cache-refresh-time": "2012-01-09 08:39:42 CDT",
+  "last-unhandled-exception": "java.lang.NullPointerException",
+  "content-cache-statistics": {
+    "hit-count": 20301,
+    "miss-count": 294,
+    "load-success-count": 293,
+    "load-exception-count": 1,
+    "total-load-time": 17234000,
+    "eviction-count": 0
+  }
+}
+</pre>
+          </p>
         </div>
       </div>
+      
       <div class="row-fluid">
           <!-- Footer -->
           <footer class="footer">

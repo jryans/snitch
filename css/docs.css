@@ -2,6 +2,10 @@ body {
   padding-top: 60px;
   padding-bottom: 40px;
 }
+
+code {
+  white-space: nowrap;
+}
       
 a:link {
   text-decoration: none;
