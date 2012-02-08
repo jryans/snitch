@@ -1,20 +1,7 @@
-body {
-  padding-top: 90px;
-}
-
 a:link {
   text-decoration: none;
 }
 
-.jumbotron {
-  position: relative;
-}
-.jumbotron h1 {
-  margin-bottom: 9px;
-  font-size: 81px;
-  letter-spacing: -1px;
-  line-height: 1;
-}
 .jumbotron p {
   margin-bottom: 18px;
   font-weight: 300;
@@ -22,20 +9,23 @@ a:link {
 
 /* Masthead (docs home) */
 .masthead {
+  padding-top: 80px;
   margin-bottom: 72px;
+}
+.masthead h1 {
+  font-size: 81px;
+  letter-spacing: -1px;
+  line-height: 1;
 }
 .masthead h1,
 .masthead p {
   text-align: center;
 }
-.masthead h1 {
-  margin-bottom: 18px;
-}
 .masthead p {
   margin-left: 5%;
   margin-right: 5%;
   font-size: 30px;
-  line-height: 10px;
+  line-height: 1;
 }
 .masthead .byline {
   color: #909090;
