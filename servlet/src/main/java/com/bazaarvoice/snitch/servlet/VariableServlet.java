@@ -18,6 +18,7 @@ package com.bazaarvoice.snitch.servlet;
 import com.bazaarvoice.snitch.Formatter;
 import com.bazaarvoice.snitch.Snitch;
 import com.bazaarvoice.snitch.Variable;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.io.Closeables;
@@ -37,7 +38,16 @@ import java.util.Collection;
  */
 public class VariableServlet extends HttpServlet {
     private static final long serialVersionUID = 0L;
-    private final Snitch _snitch = Snitch.getInstance();
+    private final Snitch _snitch;
+
+    public VariableServlet() {
+        _snitch = Snitch.getInstance();
+    }
+
+    @VisibleForTesting
+    VariableServlet(Snitch snitch) {
+        _snitch = snitch;
+    }
 
     @SuppressWarnings("unchecked")
     @Override
