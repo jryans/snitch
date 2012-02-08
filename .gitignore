@@ -1,0 +1,9 @@
+# IntelliJ Files
+*.ipr
+*.iws
+*.iml
+.idea/
+
+# Build outputs
+target/
+reports/
