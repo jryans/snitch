@@ -1,5 +1,5 @@
 /*
- * Copyright 2011 Bazaarvoice
+ * Copyright 2012 Bazaarvoice
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,9 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package com.bazaarvoice.snitch.util;
 
-package com.bazaarvoice.snitch;
+public interface ClassDetector {
+    /** Determine whether or not a class has been loaded. */
+    boolean isClassLoaded(String className);
 
-public interface ClassProcessor {
-    void process(ClassLoader loader, Class<?> cls);
+    /**
+     *  Return the class object for a class that has been loaded.
+     *  <p/>
+     *  If the class hasn't yet been loaded calling this method may trigger it to be loaded.  If the class cannot be
+     *  found, loaded, or initialized then {@code null} will be returned.
+     */
+    Class<?> getLoadedClass(String className);
 }

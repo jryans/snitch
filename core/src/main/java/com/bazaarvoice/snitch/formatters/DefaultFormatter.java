@@ -1,5 +1,5 @@
 /*
- * Copyright 2011 Bazaarvoice
+ * Copyright 2012 Bazaarvoice
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,14 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.bazaarvoice.snitch;
+package com.bazaarvoice.snitch.formatters;
 
+import com.bazaarvoice.snitch.Formatter;
 import com.google.gson.stream.JsonWriter;
 
 import java.io.IOException;
 
-public class ToStringFormatter implements Formatter<Object> {
-    public static final ToStringFormatter INSTANCE = new ToStringFormatter();
+/** The default Snitch formatter. */
+public class DefaultFormatter implements Formatter<Object> {
+    public static final DefaultFormatter INSTANCE = new DefaultFormatter();
+
+    // Singleton
+    private DefaultFormatter() {}
 
     @Override
     public void format(Object obj, JsonWriter writer) throws IOException {

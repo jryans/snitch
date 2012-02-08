@@ -19,6 +19,11 @@ import com.google.gson.stream.JsonWriter;
 
 import java.io.IOException;
 
+/**
+ * Snitch formatter used for formatting an object for output.
+ * <p/>
+ * NOTE: Currently all formatters <b>MUST</b> have a default constructor.
+ */
 public interface Formatter<T> {
     /** Format the provided object to the JSON stream. */
     void format(T obj, JsonWriter writer) throws IOException;

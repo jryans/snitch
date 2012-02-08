@@ -13,47 +13,43 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.bazaarvoice.snitch;
+package com.bazaarvoice.snitch.variables;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Objects;
 
-import java.lang.reflect.Method;
+import java.lang.reflect.Field;
 
-public class MethodVariable implements Variable {
-    private final Class<?> _owner;
-    private final Method _method;
-    private final String _name;
+public class FieldVariable extends AbstractVariable {
+    private final Field _field;
 
-    public MethodVariable(Class<?> owner, Method method, String name) {
-        _owner = owner;
-        _method = method;
-        _name = name;
+    public FieldVariable(Class<?> owner, String name, Object instance, Field field) {
+        super(owner, name, instance);
 
-        _method.setAccessible(true);
+        _field = field;
+        _field.setAccessible(true);
     }
 
-    @Override
-    public Class<?> getOwner() {
-        return _owner;
+    public FieldVariable(Class<?> owner, String name, Field field) {
+        this(owner, name, null, field);
     }
-
-    @Override
-    public String getName() {
-        return _name;
+    
+    @VisibleForTesting
+    public Field getField() {
+        return _field;
     }
 
     @Override
     public Class<?> getType() {
-        return _method.getReturnType();
+        return _field.getType();
     }
 
     @Override
     public Object getValue() {
         try {
-            // It's okay to pass null into the invoke call because this method is static
-            return _method.invoke(null);
+            return _field.get(_instance);
         } catch (Exception e) {
-            // If we weren't able to invoke the method then we need to notify the caller.  Probably the easiest way is
+            // If we weren't able to access the field then we need to notify the caller.  Probably the easiest way is
             // to return the exception itself as the value of the variable.  This will show the user that it wasn't
             // able to be accessed without any possibility of crashing the program.
             return e;
@@ -63,9 +59,10 @@ public class MethodVariable implements Variable {
     @Override
     public String toString() {
         return Objects.toStringHelper(this)
-                .add("owner", _owner)
-                .add("method", _method)
                 .add("name", _name)
+                .add("owner", _owner)
+                .add("instance", _instance)
+                .add("field", _field)
                 .add("value", getValue())
                 .toString();
     }
