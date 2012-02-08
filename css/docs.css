@@ -1,3 +1,8 @@
+body {
+  padding-top: 60px;
+  padding-bottom: 40px;
+}
+      
 a:link {
   text-decoration: none;
 }
@@ -9,7 +14,6 @@ a:link {
 
 /* Masthead (docs home) */
 .masthead {
-  padding-top: 80px;
   margin-bottom: 72px;
 }
 .masthead h1 {
@@ -22,8 +26,6 @@ a:link {
   text-align: center;
 }
 .masthead p {
-  margin-left: 5%;
-  margin-right: 5%;
   font-size: 30px;
   line-height: 1;
 }

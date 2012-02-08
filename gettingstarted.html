@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Snitch: JVM monitoring made painless</title>
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/docs.css" rel="stylesheet">
+    <link href="css/bootstrap-responsive.min.css" rel="stylesheet">
+    <link href="css/prettify.css" rel="stylesheet">
+  </head>
+
+  <body onload="prettyPrint()">
+    <!-- Navigation bar -->
+    <div class="navbar navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container-fluid">
+          <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </a>
+          <div class="nav-collapse">
+            <ul class="nav">
+              <li><a href="index.html">Overview</a></li>
+              <li class="active"><a href="#">Getting Started</a></li>
+              <li><a href="#">Github</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="container-fluid">
+      <div class="row-fluid">
+        <div class="span2">
+          <div class="well sidebar-nav">
+            <ul class="nav nav-list">
+              <li class="nav-header">Getting Started</li>
+              <li><a href="#maven">Maven setup</a></li>
+              <li><a href="#annotations">Annotations</a></li>
+              <li><a href="#maven">Maven setup</a></li>
+              <li><a href="#maven">Maven setup</a></li>
+              <li><a href="#maven">Maven setup</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="span10">
+          <p id="maven">
+            <h2>Maven setup</h2>
+            Snitch is distributed through maven central.  To use it, just include it in your <code>pom.xml</code>.
+            <p/>
+            <pre class="prettyprint">
+&lt;dependency&gt;
+  &lt;groupId&gt;com.bazaarvoice.snitch&lt;/groupId&gt;
+  &lt;artifactId&gt;snitch&lt;/artifactId&gt;
+  &lt;version&gt;0.8.0&lt;/version&gt;
+&lt;/dependency&gt;</pre>
+          </p>
+          
+          <p id="annotations">
+            <h2>Annotations</h2>
+            Using Snitch is incredibly easy.  In your code, mark the fields that you would like to be exposed by
+            Snitch with the <code>@Monitored</code> annotation.  Snitch will then do all of the hard work in locating
+            and exposing them at runtime.  The simplest case is when the field that is annotated is static.
+            <p/>
+            <pre class="prettyprint">
+public class MyService {
+  @Monitored
+  private static final AtomicLong NUM_REQUESTS = new AtomicLong();
+  
+  public void handleRequest() {
+    NUM_REQUESTS.incrementAndGet();
+    // ... handle the request ...
+  }
+}
+</pre>
+            It's as simple as that.  Snitch will find the <code>NUM_REQUESTS</code> field at runtime and expose it's
+            value to the outside world.  As the value contained in the field changes, so will the value that Snitch
+            exposes.
+            <p/>
+            If you'd like to control the name that Snitch uses for the field, the <code>@Monitored</code> annotation
+            accepts a string argument that allows you to specify it.  Snitch will then use the specified name whenever
+            it outputs the field.
+            <p/>
+            <pre class="prettyprint">
+public class MyService {
+  @Monitored("number-of-handled-requests")
+  private static final AtomicLong NUM_REQUESTS = new AtomicLong();
+
+  public void handleRequest() {
+    NUM_REQUESTS.incrementAndGet();
+    // ... handle the request ...
+  }
+}
+</pre>
+            <p/>
+            Snitch also works with annotated methods.  If a method is annotated with the <code>@Monitored</code> annotation
+            then Snitch will expose the return value of that method to the outside world as well.  The annotated method
+            must take no parameters and must not return void.  At runtime Snitch will retrieve a handle to the method and
+            invoke it in order to retrieve its value.  The previous example could have been rewritten to use an annotated
+            method instead of a field.
+            <p/>
+            <pre class="prettyprint">
+public class MyService {
+  private static final AtomicLong NUM_REQUESTS = new AtomicLong();
+
+  @Monitored("number-of-handled-requests")
+  public void getNumRequests() {
+    return NUM_REQUESTS.get();
+  }
+  
+  public void handleRequest() {
+    NUM_REQUESTS.incrementAndGet();
+    // ... handle the request ...
+  }
+}
+</pre>
+          </p>
+        </div>
+      </div>
+      <div class="row-fluid">
+          <!-- Footer -->
+          <footer class="footer">
+            <p>Created at <a href="http://developer.bazaarvoice.com/">Bazaarvoice</a>.</p>
+           <p>
+              Code licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License v2.0</a>. 
+              Documentation licensed under <a href="http://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>.
+            </p>
+          </footer>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Javascript, placed at the end of the document so the pages load faster -->
+    <script src="js/jquery.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/google-code-prettify/prettify.js"></script>
+  </body>
+</html>
