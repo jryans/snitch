@@ -21,6 +21,7 @@ import com.bazaarvoice.snitch.naming.NamingStrategy;
 import com.bazaarvoice.snitch.util.ReflectionClassDetector;
 import com.bazaarvoice.snitch.Variable;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Objects;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
@@ -117,9 +118,7 @@ public class VariableRegistry {
         checkForRecentlyLoadedClasses();
         
         Class<?> cls = instance.getClass();
-        String className = cls.getName();
-
-        handleRegisteredInstance(className, cls, instance);
+        handleRegisteredInstance(cls, instance);
     }
 
     private synchronized void scanClassPath() {
@@ -205,13 +204,19 @@ public class VariableRegistry {
             }
         }
     }
-    
-    private void handleRegisteredInstance(String className, Class<?> cls, Object instance) {
-        Collection<FieldHandle> fieldHandles = _unboundFieldHandles.get(className);
-        handleRegisteredInstanceFields(cls, instance, fieldHandles);
 
-        Collection<MethodHandle> methodHandles = _unboundMethodHandles.get(className);
-        handleRegisteredInstanceMethods(cls, instance, methodHandles);
+    private void handleRegisteredInstance(Class<?> cls, Object instance) {
+        while (cls != null) {
+            String className = cls.getName();
+
+            Collection<FieldHandle> fieldHandles = _unboundFieldHandles.get(className);
+            handleRegisteredInstanceFields(cls, instance, fieldHandles);
+
+            Collection<MethodHandle> methodHandles = _unboundMethodHandles.get(className);
+            handleRegisteredInstanceMethods(cls, instance, methodHandles);
+
+            cls = cls.getSuperclass();
+        }
     }
 
     private void handleRegisteredInstanceFields(Class<?> cls, Object instance, Collection<FieldHandle> handles) {
@@ -294,6 +299,13 @@ public class VariableRegistry {
         public Field getField() {
             return _field;
         }
+
+        @Override
+        public String toString() {
+            return Objects.toStringHelper(this)
+                    .add("field", _field)
+                    .toString();
+        }
     }
 
     private static final class MethodHandle {
@@ -305,6 +317,13 @@ public class VariableRegistry {
         
         public Method getMethod() {
             return _method;
+        }
+
+        @Override
+        public String toString() {
+            return Objects.toStringHelper(this)
+                    .add("method", _method)
+                    .toString();
         }
     }
 }

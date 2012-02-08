@@ -111,6 +111,26 @@ public class VariableRegistryTest {
     }
 
     @Test
+    public void testInheritedFieldInRegisteredInstance() throws NoSuchFieldException {
+        List<FieldEntry> fields = mockFields(CLASS_NAME, FIELD_NAME);  // System only sees fields in parent class
+        when(_scanner.getFieldsAnnotatedWith(Foo.class)).thenReturn(fields);
+        when(_detector.isClassLoaded(CLASS_NAME)).thenReturn(true);
+        when(_detector.isClassLoaded(SUBCLASS_NAME)).thenReturn(true);
+        when((Class) _detector.getLoadedClass(CLASS_NAME)).thenReturn(TestClass.class);
+        when((Class) _detector.getLoadedClass(SUBCLASS_NAME)).thenReturn(TestSubclass.class);
+
+        TestSubclass instance = new TestSubclass();
+        _registry.registerInstance(instance);
+
+        List<Variable> variables = _registry.getVariables();
+        assertEquals(1, variables.size());
+        assertTrue(variables.get(0) instanceof FieldVariable);
+
+        FieldVariable variable = (FieldVariable) variables.get(0);
+        assertEquals(TestClass.class.getField(FIELD_NAME), variable.getField());
+    }
+
+    @Test
     public void testMethodInRegisteredInstance() throws NoSuchMethodException {
         List<MethodEntry> methods = mockMethods(CLASS_NAME, METHOD_NAME);
         when(_scanner.getMethodsAnnotatedWith(Foo.class)).thenReturn(methods);
@@ -120,6 +140,28 @@ public class VariableRegistryTest {
         assertTrue(_registry.getVariables().isEmpty());
 
         TestClass instance = new TestClass();
+        _registry.registerInstance(instance);
+
+        List<Variable> variables = _registry.getVariables();
+        assertEquals(1, variables.size());
+        assertTrue(variables.get(0) instanceof MethodVariable);
+
+        MethodVariable variable = (MethodVariable) variables.get(0);
+        assertEquals(TestClass.class.getMethod(METHOD_NAME), variable.getMethod());
+    }
+    
+    @Test
+    public void testInheritedMethodInRegisteredInstance() throws NoSuchMethodException {
+        List<MethodEntry> methods = mockMethods(CLASS_NAME, METHOD_NAME);
+        when(_scanner.getMethodsAnnotatedWith(Foo.class)).thenReturn(methods);
+        when(_detector.isClassLoaded(CLASS_NAME)).thenReturn(true);
+        when(_detector.isClassLoaded(SUBCLASS_NAME)).thenReturn(true);
+        when((Class) _detector.getLoadedClass(CLASS_NAME)).thenReturn(TestClass.class);
+        when((Class) _detector.getLoadedClass(SUBCLASS_NAME)).thenReturn(TestSubclass.class);
+
+        assertTrue(_registry.getVariables().isEmpty());
+
+        TestSubclass instance = new TestSubclass();
         _registry.registerInstance(instance);
 
         List<Variable> variables = _registry.getVariables();
@@ -162,16 +204,20 @@ public class VariableRegistryTest {
     /////////////////////////////////////////////////////////////////////////////////////
 
     private static final String CLASS_NAME = TestClass.class.getName();
+    private static final String SUBCLASS_NAME = TestSubclass.class.getName();
     private static final String STATIC_FIELD_NAME = "staticField";
     private static final String STATIC_METHOD_NAME = "staticMethod";
     private static final String FIELD_NAME = "field";
     private static final String METHOD_NAME = "method";
 
     @SuppressWarnings("unused")
-    private static final class TestClass {
+    private static class TestClass {
         @Foo public static int staticField;
         @Foo public static int staticMethod() { return 0; }
         @Foo public int field;
         @Foo public int method() { return 0; }
+    }
+
+    private static class TestSubclass extends TestClass {
     }
 }
