@@ -34,7 +34,7 @@ public class ReflectionClassDetector implements ClassDetector {
     private final Method _findLoadedClassMethod;
 
     public ReflectionClassDetector() {
-        _loader = ClassLoader.getSystemClassLoader();
+        _loader = Thread.currentThread().getContextClassLoader();
 
         try {
             _findLoadedClassMethod = ClassLoader.class.getDeclaredMethod("findLoadedClass", String.class);
