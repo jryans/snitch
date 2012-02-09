@@ -24,6 +24,7 @@ import java.io.IOException;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
 
 public class FormatterRegistryTest {
     private final FormatterRegistry _registry = new FormatterRegistry(DefaultFormatter.INSTANCE);
@@ -35,25 +36,16 @@ public class FormatterRegistryTest {
 
     @Test
     public void testDefaultFormatterOverride() {
-        Formatter<?> defaultFormatter = new Formatter<Object>() {
-            @Override
-            public void format(Object obj, JsonWriter writer) throws IOException {
-            }
-        };
-
+        Formatter<?> defaultFormatter = mock(Formatter.class);
         _registry.setDefaultFormatter(defaultFormatter);
         assertEquals(defaultFormatter, _registry.getFormatter(Object.class));
     }
-    
+
     @Test
+    @SuppressWarnings("unchecked")
     public void testFormatterOverride() {
-        Formatter<Object> formatter = new Formatter<Object>() {
-            @Override
-            public void format(Object obj, JsonWriter writer) throws IOException {
-            }
-        };
-        
-        _registry.registerFormatter(Object.class, formatter);
+        Formatter formatter = mock(Formatter.class);
+        _registry.registerFormatter(Object.class, (Formatter<Object>) formatter);
         assertEquals(formatter, _registry.getFormatter(Object.class));
     }
     
