@@ -18,12 +18,13 @@ package com.bazaarvoice.snitch.variables;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Objects;
 
+import java.lang.ref.Reference;
 import java.lang.reflect.Field;
 
 public class FieldVariable extends AbstractVariable {
     private final Field _field;
 
-    public FieldVariable(Class<?> owner, String name, Object instance, Field field) {
+    public FieldVariable(Class<?> owner, String name, Reference<Object> instance, Field field) {
         super(owner, name, instance);
 
         _field = field;
@@ -47,7 +48,7 @@ public class FieldVariable extends AbstractVariable {
     @Override
     public Object getValue() {
         try {
-            return _field.get(_instance);
+            return _field.get(_instance.get());
         } catch (Exception e) {
             // If we weren't able to access the field then we need to notify the caller.  Probably the easiest way is
             // to return the exception itself as the value of the variable.  This will show the user that it wasn't
@@ -61,7 +62,7 @@ public class FieldVariable extends AbstractVariable {
         return Objects.toStringHelper(this)
                 .add("name", _name)
                 .add("owner", _owner)
-                .add("instance", _instance)
+                .add("instance", _instance.get())
                 .add("field", _field)
                 .add("value", getValue())
                 .toString();

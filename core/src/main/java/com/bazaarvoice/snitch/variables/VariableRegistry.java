@@ -15,13 +15,17 @@
  */
 package com.bazaarvoice.snitch.variables;
 
+import com.bazaarvoice.snitch.Variable;
+import com.bazaarvoice.snitch.naming.NamingStrategy;
 import com.bazaarvoice.snitch.scanner.AnnotationScanner;
 import com.bazaarvoice.snitch.util.ClassDetector;
-import com.bazaarvoice.snitch.naming.NamingStrategy;
 import com.bazaarvoice.snitch.util.ReflectionClassDetector;
-import com.bazaarvoice.snitch.Variable;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.FinalizableReferenceQueue;
+import com.google.common.base.FinalizableWeakReference;
 import com.google.common.base.Objects;
+import com.google.common.base.Supplier;
+import com.google.common.base.Suppliers;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
@@ -39,11 +43,11 @@ import static com.bazaarvoice.snitch.scanner.ClassPathAnnotationScanner.FieldEnt
 import static com.bazaarvoice.snitch.scanner.ClassPathAnnotationScanner.MethodEntry;
 
 // TODO: Javadoc for class
-// TODO: Convert to use FinalizableReferences for instances and classes
 // TODO: Create an error reporter that can switch between logging and throwing exceptions (dev mode)
 // TODO: Don't check for classes having been loaded every time, have some sort of backoff
+// TODO: Make sure method has non-void return type
 public class VariableRegistry {
-    /** The annotation class to find.  It is assumed that this annotation can't be found on classes. */
+    /** The annotation class to find. */
     private final Class<? extends Annotation> _annotationClass;
 
     /** The scanner that finds annotated methods and fields. */
@@ -79,6 +83,9 @@ public class VariableRegistry {
 
     /** The live variables in the JVM. */
     private final List<Variable> _variables = Lists.newArrayList();
+
+    /** Reference queue for all of the registry's weak references. */
+    private final FinalizableReferenceQueue _referenceQueue = new FinalizableReferenceQueue();
 
     public VariableRegistry(Class<? extends Annotation> annotationClass, AnnotationScanner scanner,
                             NamingStrategy<? extends Annotation> namingStrategy) {
@@ -206,20 +213,26 @@ public class VariableRegistry {
     }
 
     private void handleRegisteredInstance(Class<?> cls, Object instance) {
+        Supplier<InstanceReference> referenceSupplier = Suppliers.memoize(new InstanceReferenceSupplier(instance));
         while (cls != null) {
             String className = cls.getName();
 
             Collection<FieldHandle> fieldHandles = _unboundFieldHandles.get(className);
-            handleRegisteredInstanceFields(cls, instance, fieldHandles);
+            if (!fieldHandles.isEmpty()) {
+                handleRegisteredInstanceFields(cls, referenceSupplier.get(), fieldHandles);
+            }
 
             Collection<MethodHandle> methodHandles = _unboundMethodHandles.get(className);
-            handleRegisteredInstanceMethods(cls, instance, methodHandles);
+            if (!fieldHandles.isEmpty()) {
+                handleRegisteredInstanceMethods(cls, referenceSupplier.get(), methodHandles);
+            }
 
             cls = cls.getSuperclass();
         }
     }
 
-    private void handleRegisteredInstanceFields(Class<?> cls, Object instance, Collection<FieldHandle> handles) {
+    private void handleRegisteredInstanceFields(Class<?> cls, InstanceReference instance,
+                                                Collection<FieldHandle> handles) {
         for (FieldHandle handle : handles) {
             Field field = handle.getField();
             FieldVariable variable = new FieldVariable(cls, getName(field), instance, field);
@@ -228,7 +241,8 @@ public class VariableRegistry {
         }
     }
 
-    private void handleRegisteredInstanceMethods(Class<?> cls, Object instance, Collection<MethodHandle> handles) {
+    private void handleRegisteredInstanceMethods(Class<?> cls, InstanceReference instance,
+                                                 Collection<MethodHandle> handles) {
         for (MethodHandle handle : handles) {
             Method method = handle.getMethod();
             MethodVariable variable = new MethodVariable(cls, getName(method), instance, method);
@@ -287,6 +301,36 @@ public class VariableRegistry {
         }
 
         return field;
+    }
+
+    private final class InstanceReference extends FinalizableWeakReference<Object> {
+        private final List<Variable> _variables = Lists.newArrayList();
+        
+        protected InstanceReference(Object referent) {
+            super(referent, _referenceQueue);
+        }
+        
+        public void addVariable(Variable v) {
+            _variables.add(v);
+        }
+
+        @Override
+        public void finalizeReferent() {
+            //throw new Exception("implement me!!!!");
+        }
+    }
+    
+    private final class InstanceReferenceSupplier implements Supplier<InstanceReference> {
+        private final Object _referent;
+        
+        public InstanceReferenceSupplier(Object referent) {
+            _referent = referent;
+        }
+        
+        @Override
+        public InstanceReference get() {
+            return new InstanceReference(_referent);
+        }
     }
 
     private static final class FieldHandle {

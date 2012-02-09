@@ -17,12 +17,14 @@ package com.bazaarvoice.snitch.variables;
 
 import com.bazaarvoice.snitch.Variable;
 
+import java.lang.ref.Reference;
+
 abstract class AbstractVariable implements Variable {
     protected final Class<?> _owner;
     protected final String _name;
-    protected final Object _instance;
+    protected final Reference<Object> _instance;
 
-    protected AbstractVariable(Class<?> owner, String name, Object instance) {
+    protected AbstractVariable(Class<?> owner, String name, Reference<Object> instance) {
         _owner = owner;
         _name = name;
         _instance = instance;
@@ -40,6 +42,6 @@ abstract class AbstractVariable implements Variable {
 
     @Override
     public Object getInstance() {
-        return _instance;
+        return _instance.get();
     }
 }

@@ -18,12 +18,13 @@ package com.bazaarvoice.snitch.variables;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Objects;
 
+import java.lang.ref.Reference;
 import java.lang.reflect.Method;
 
 public class MethodVariable extends AbstractVariable {
     private final Method _method;
 
-    public MethodVariable(Class<?> owner, String name, Object instance, Method method) {
+    public MethodVariable(Class<?> owner, String name, Reference<Object> instance, Method method) {
         super(owner, name, instance);
 
         _method = method;
@@ -61,7 +62,7 @@ public class MethodVariable extends AbstractVariable {
         return Objects.toStringHelper(this)
                 .add("name", _name)
                 .add("owner", _owner)
-                .add("instance", _instance)
+                .add("instance", _instance.get())
                 .add("method", _method)
                 .add("value", getValue())
                 .toString();
