@@ -21,8 +21,8 @@
           <div class="nav-collapse">
             <ul class="nav">
               <li><a href="index.html">Overview</a></li>
-              <li class="active"><a href="#">Getting Started</a></li>
-              <li><a href="#">Github</a></li>
+              <li class="active"><a>Getting Started</a></li>
+              <li><a href="http://www.github.com/bazaarvoice/snitch">Github</a></li>
             </ul>
           </div>
         </div>
@@ -106,15 +106,22 @@ public class MyService {
             Often times it's not possible to make all of the fields and methods that should be monitored by Snitch static.
             Snitch supports you in these cases as well and has the ability to work with non-statics as well.  It does
             however require a bit more work on your part.  In order to allow Snitch to see your instances you need to
-            register them with it.
+            register them with Snitch using the <code>Snitch</code> class.
             <p/>
             <pre class="prettyprint">
-              
-              
-EXAMPLE TO GO HERE
-
-
-
+public class MyService {
+  private final AtomicLong numRequests = new AtomicLong();
+  
+  public MyService() {
+    // Register my service with Snitch so it can find the non-static fields
+    Snitch.getInstance().registerInstance(this);
+  }
+  
+  public void handleRequest() {
+    numRequests.incrementAndGet();
+    // ... handle the request ...
+  }
+}
 </pre>
             <p/>
           </p>
