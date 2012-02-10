@@ -89,7 +89,7 @@ public class Snitch {
         }
     }
     
-    public List<Variable> getVariables() {
+    public Iterable<Variable> getVariables() {
         return _variableRegistry.getVariables();
     }
     

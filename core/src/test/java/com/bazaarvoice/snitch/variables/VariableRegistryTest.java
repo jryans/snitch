@@ -15,11 +15,13 @@
  */
 package com.bazaarvoice.snitch.variables;
 
-import com.bazaarvoice.snitch.scanner.AnnotationScanner;
-import com.bazaarvoice.snitch.util.ClassDetector;
+import com.bazaarvoice.snitch.Variable;
 import com.bazaarvoice.snitch.naming.DefaultNamingStrategy;
 import com.bazaarvoice.snitch.naming.NamingStrategy;
-import com.bazaarvoice.snitch.Variable;
+import com.bazaarvoice.snitch.scanner.AnnotationScanner;
+import com.bazaarvoice.snitch.util.ClassDetector;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import org.junit.Test;
 
@@ -27,6 +29,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.Iterator;
 import java.util.List;
 
 import static com.bazaarvoice.snitch.scanner.AnnotationScanner.FieldEntry;
@@ -48,8 +51,8 @@ public class VariableRegistryTest {
         when(_scanner.getFieldsAnnotatedWith(Foo.class)).thenReturn(fields);
         when(_detector.isClassLoaded(CLASS_NAME)).thenReturn(false);
 
-        List<Variable> variables = _registry.getVariables();
-        assertTrue(variables.isEmpty());
+        Iterable<Variable> variables = _registry.getVariables();
+        assertTrue(Iterables.isEmpty(variables));
     }
 
     @Test
@@ -58,8 +61,8 @@ public class VariableRegistryTest {
         when(_scanner.getMethodsAnnotatedWith(Foo.class)).thenReturn(methods);
         when(_detector.isClassLoaded(CLASS_NAME)).thenReturn(false);
 
-        List<Variable> variables = _registry.getVariables();
-        assertTrue(variables.isEmpty());
+        Iterable<Variable> variables = _registry.getVariables();
+        assertTrue(Iterables.isEmpty(variables));
     }
 
     @Test
@@ -69,29 +72,27 @@ public class VariableRegistryTest {
         when(_detector.isClassLoaded(CLASS_NAME)).thenReturn(true);
         when((Class) _detector.getLoadedClass(CLASS_NAME)).thenReturn(TestClass.class);
 
-        List<Variable> variables = _registry.getVariables();
-        assertEquals(1, variables.size());
-        assertTrue(variables.get(0) instanceof FieldVariable);
+        Iterable<Variable> variables = _registry.getVariables();
+        assertTrue(Iterables.getOnlyElement(variables) instanceof FieldVariable);
 
-        FieldVariable variable = (FieldVariable) variables.get(0);
+        FieldVariable variable = (FieldVariable) Iterables.getOnlyElement(variables);
         assertEquals(TestClass.class.getField(STATIC_FIELD_NAME), variable.getField());
     }
 
     @Test
     public void testStaticMethodInLoadedClass() throws NoSuchMethodException {
         List<MethodEntry> methods = mockMethods(CLASS_NAME, STATIC_METHOD_NAME);
-        when(_scanner.getMethodsAnnotatedWith(Foo.class)).thenReturn(Lists.newArrayList(methods));
+        when(_scanner.getMethodsAnnotatedWith(Foo.class)).thenReturn(methods);
         when(_detector.isClassLoaded(CLASS_NAME)).thenReturn(true);
         when((Class) _detector.getLoadedClass(CLASS_NAME)).thenReturn(TestClass.class);
 
-        List<Variable> variables = _registry.getVariables();
-        assertEquals(1, variables.size());
-        assertTrue(variables.get(0) instanceof MethodVariable);
+        Iterable<Variable> variables = _registry.getVariables();
+        assertTrue(Iterables.getOnlyElement(variables) instanceof MethodVariable);
 
-        MethodVariable variable = (MethodVariable) variables.get(0);
+        MethodVariable variable = (MethodVariable) Iterables.getOnlyElement(variables);
         assertEquals(TestClass.class.getMethod(STATIC_METHOD_NAME), variable.getMethod());
     }
-    
+
     @Test
     public void testFieldInRegisteredInstance() throws NoSuchFieldException {
         List<FieldEntry> fields = mockFields(CLASS_NAME, FIELD_NAME);
@@ -101,12 +102,11 @@ public class VariableRegistryTest {
 
         TestClass instance = new TestClass();
         _registry.registerInstance(instance);
-        
-        List<Variable> variables = _registry.getVariables();
-        assertEquals(1, variables.size());
-        assertTrue(variables.get(0) instanceof FieldVariable);
-        
-        FieldVariable variable = (FieldVariable) variables.get(0);
+
+        Iterable<Variable> variables = _registry.getVariables();
+        assertTrue(Iterables.getOnlyElement(variables) instanceof FieldVariable);
+
+        FieldVariable variable = (FieldVariable) Iterables.getOnlyElement(variables);
         assertEquals(TestClass.class.getField(FIELD_NAME), variable.getField());
     }
 
@@ -122,11 +122,10 @@ public class VariableRegistryTest {
         TestSubclass instance = new TestSubclass();
         _registry.registerInstance(instance);
 
-        List<Variable> variables = _registry.getVariables();
-        assertEquals(1, variables.size());
-        assertTrue(variables.get(0) instanceof FieldVariable);
+        Iterable<Variable> variables = _registry.getVariables();
+        assertTrue(Iterables.getOnlyElement(variables) instanceof FieldVariable);
 
-        FieldVariable variable = (FieldVariable) variables.get(0);
+        FieldVariable variable = (FieldVariable) Iterables.getOnlyElement(variables);
         assertEquals(TestClass.class.getField(FIELD_NAME), variable.getField());
     }
 
@@ -137,19 +136,18 @@ public class VariableRegistryTest {
         when(_detector.isClassLoaded(CLASS_NAME)).thenReturn(true);
         when((Class) _detector.getLoadedClass(CLASS_NAME)).thenReturn(TestClass.class);
 
-        assertTrue(_registry.getVariables().isEmpty());
+        assertTrue(Iterables.isEmpty(_registry.getVariables()));
 
         TestClass instance = new TestClass();
         _registry.registerInstance(instance);
 
-        List<Variable> variables = _registry.getVariables();
-        assertEquals(1, variables.size());
-        assertTrue(variables.get(0) instanceof MethodVariable);
+        Iterable<Variable> variables = _registry.getVariables();
+        assertTrue(Iterables.getOnlyElement(variables) instanceof MethodVariable);
 
-        MethodVariable variable = (MethodVariable) variables.get(0);
+        MethodVariable variable = (MethodVariable) Iterables.getOnlyElement(variables);
         assertEquals(TestClass.class.getMethod(METHOD_NAME), variable.getMethod());
     }
-    
+
     @Test
     public void testInheritedMethodInRegisteredInstance() throws NoSuchMethodException {
         List<MethodEntry> methods = mockMethods(CLASS_NAME, METHOD_NAME);
@@ -159,17 +157,38 @@ public class VariableRegistryTest {
         when((Class) _detector.getLoadedClass(CLASS_NAME)).thenReturn(TestClass.class);
         when((Class) _detector.getLoadedClass(SUBCLASS_NAME)).thenReturn(TestSubclass.class);
 
-        assertTrue(_registry.getVariables().isEmpty());
+        assertTrue(Iterables.isEmpty(_registry.getVariables()));
 
         TestSubclass instance = new TestSubclass();
         _registry.registerInstance(instance);
 
-        List<Variable> variables = _registry.getVariables();
-        assertEquals(1, variables.size());
-        assertTrue(variables.get(0) instanceof MethodVariable);
+        Iterable<Variable> variables = _registry.getVariables();
+        assertTrue(Iterables.getOnlyElement(variables) instanceof MethodVariable);
 
-        MethodVariable variable = (MethodVariable) variables.get(0);
+        MethodVariable variable = (MethodVariable) Iterables.getOnlyElement(variables);
         assertEquals(TestClass.class.getMethod(METHOD_NAME), variable.getMethod());
+    }
+
+    @Test
+    public void testAddInstanceVariableWhileIterating() throws NoSuchFieldException {
+        List<FieldEntry> fields = mockFields(CLASS_NAME, STATIC_FIELD_NAME, FIELD_NAME);
+        when(_scanner.getFieldsAnnotatedWith(Foo.class)).thenReturn(fields);
+        when(_detector.isClassLoaded(CLASS_NAME)).thenReturn(true);
+        when((Class) _detector.getLoadedClass(CLASS_NAME)).thenReturn(TestClass.class);
+
+        // Should initially just contain the static field
+        Iterable<Variable> variables = _registry.getVariables();
+        Iterator<Variable> iterator = variables.iterator();
+
+        // Register an instance so that it finds another variable
+        TestClass instance = new TestClass();
+        _registry.registerInstance(instance);
+
+        // Our variables should now contain 2 entries
+        assertEquals(2, Iterables.size(variables));
+
+        // And our iterator that was created before the 2nd variable was created should be able to see both as well
+        assertEquals(2, Iterators.size(iterator));
     }
 
     private static List<FieldEntry> mockFields(String className, String... fieldNames) {

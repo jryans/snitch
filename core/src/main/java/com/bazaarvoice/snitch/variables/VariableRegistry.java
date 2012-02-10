@@ -21,23 +21,27 @@ import com.bazaarvoice.snitch.scanner.AnnotationScanner;
 import com.bazaarvoice.snitch.util.ClassDetector;
 import com.bazaarvoice.snitch.util.ReflectionClassDetector;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.FinalizableReferenceQueue;
-import com.google.common.base.FinalizableWeakReference;
 import com.google.common.base.Objects;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
 import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.google.common.collect.MapMaker;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
 
 import java.lang.annotation.Annotation;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static com.bazaarvoice.snitch.scanner.ClassPathAnnotationScanner.FieldEntry;
 import static com.bazaarvoice.snitch.scanner.ClassPathAnnotationScanner.MethodEntry;
@@ -81,17 +85,40 @@ public class VariableRegistry {
     /** The non-static method handles that were found when the class path was scanned.  Indexed by class name. */
     private final Multimap<String, MethodHandle> _unboundMethodHandles = HashMultimap.create();
 
-    /** The live variables in the JVM. */
-    private final List<Variable> _variables = Lists.newArrayList();
+    /**
+     * The variables in the JVM that are static.  This storage is separate from the instance variable storage for two
+     * reasons.  First, concurrent maps typically don't permit null keys, and since these are static variables they
+     * don't have an instance backing them and thus the logical choice would be null for the instance (that's how all
+     * of the reflection APIs work).  Secondly, the write pattern to this set of variables is quite different from the
+     * write pattern for instance backed variables.  Instance backed variables are only ever discovered when the
+     * instance is registered and then never again.  So the storage for them can be optimized around very infrequent
+     * writes.  On the other hand, the static variables storage is written to whenever a new class is loaded that
+     * contains an annotation.  This doesn't happen very often, but will happen multiple times during the lifetime of
+     * this storage so a CopyOnWriteArrayList isn't a very good choice for the static variables since writes are very
+     * expensive.
+     */
+    private final Collection<Variable> _staticVariables = new ConcurrentLinkedQueue<Variable>();
 
-    /** Reference queue for all of the registry's weak references. */
-    private final FinalizableReferenceQueue _referenceQueue = new FinalizableReferenceQueue();
+    /** The variables in the JVM indexed by instance that caused the variable to be created. */
+    private final Multimap<Object, Variable> _instanceVariables = Multimaps.newMultimap(
+            // The underlying map to use for storage.  Use weak keys so that we don't maintain any strong references
+            // to instances that are given to us.  They should always be able to be reclaimed by the garbage collector.
+            new MapMaker().weakKeys().<Object, Collection<Variable>>makeMap(),
+
+            // The collection factory, use a CopyOnWriteArrayList since writes happen very infrequently.
+            new Supplier<Collection<Variable>>() {
+                @Override
+                public Collection<Variable> get() {
+                    return new CopyOnWriteArrayList<Variable>();
+                }
+            }
+    );
 
     public VariableRegistry(Class<? extends Annotation> annotationClass, AnnotationScanner scanner,
                             NamingStrategy<? extends Annotation> namingStrategy) {
         this(annotationClass, scanner, namingStrategy, new ReflectionClassDetector());
     }
-    
+
     @VisibleForTesting
     VariableRegistry(Class<? extends Annotation> annotationClass, AnnotationScanner scanner,
                      NamingStrategy namingStrategy, ClassDetector detector) {
@@ -104,28 +131,33 @@ public class VariableRegistry {
     }
 
     /** Return the set of known variables in the system. */
-    public List<Variable> getVariables() {
-        if (!_alreadyScanned) {
-            scanClassPath();
-        }
-
+    public Iterable<Variable> getVariables() {
         checkForRecentlyLoadedClasses();
 
-        return _variables;
+        // We need to merge _staticVariables and _instanceVariables together here.  We know that they're both
+        // implemented using thread-safe collections, so we can just concatenate them together and be confident that
+        // any consumer will never experience any inconsistencies while iterating.
+        return Iterables.unmodifiableIterable(Iterables.concat(_staticVariables, _instanceVariables.values()));
     }
 
     /** Register an instance of a class that may have non-static variables/methods annotated. */
-    public void registerInstance(Object instance) {
+    public void registerInstance(final Object instance) {
         if (instance == null) return;
 
-        if (!_alreadyScanned) {
-            scanClassPath();
-        }
-
         checkForRecentlyLoadedClasses();
-        
-        Class<?> cls = instance.getClass();
-        handleRegisteredInstance(cls, instance);
+
+        // Wrap the instance into a supplier that can create the weak reference for it.  This lets us defer creation of
+        // the weak reference until we know for sure that we need it.  We use a memoized supplier as well so we know for
+        // sure that we'll only ever create one weak reference for this instance and use it in all variables.
+        Supplier<WeakReference<Object>> supplier = Suppliers.memoize(new Supplier<WeakReference<Object>>() {
+            @Override
+            public WeakReference<Object> get() {
+                return new WeakReference<Object>(instance);
+            }
+        });
+
+        Collection<Variable> instanceVariables = createInstanceVariables(instance.getClass(), supplier);
+        _instanceVariables.putAll(instance, instanceVariables);
     }
 
     private synchronized void scanClassPath() {
@@ -147,10 +179,15 @@ public class VariableRegistry {
     }
 
     private synchronized void checkForRecentlyLoadedClasses() {
+        // Scan the class path if we haven't already
+        if (!_alreadyScanned) {
+            scanClassPath();
+        }
+
         // When we scan the class path several things can happen:
         //
-        //   1) The class that the elements we found belong to has already been loaded by the JVM.  In this case all 
-        //   static elements are immediately converted into variables.  The non-static elements are remembered so that 
+        //   1) The class that the elements we found belong to has already been loaded by the JVM.  In this case all
+        //   static elements are immediately converted into variables.  The non-static elements are remembered so that
         //   later when an instance is registered variables can be created.
         //
         //   2) The class that the elements we found belong to hasn't yet been loaded by the JVM.  In this case the
@@ -167,7 +204,7 @@ public class VariableRegistry {
             }
         }
     }
-    
+
     private void handleLoadedClass(String className, Class<?> cls) {
         Collection<FieldEntry> fieldEntries = _unloadedFieldEntries.removeAll(className);
         handleLoadedClassFields(className, cls, fieldEntries);
@@ -186,7 +223,7 @@ public class VariableRegistry {
             int modifiers = field.getModifiers();
             if (Modifier.isStatic(modifiers)) {
                 FieldVariable variable = new FieldVariable(cls, getName(field), field);
-                _variables.add(variable);
+                _staticVariables.add(variable);
             } else {
                 FieldHandle handle = new FieldHandle(field);
                 _unboundFieldHandles.put(className, handle);
@@ -204,7 +241,7 @@ public class VariableRegistry {
             int modifiers = method.getModifiers();
             if (Modifier.isStatic(modifiers)) {
                 MethodVariable variable = new MethodVariable(cls, getName(method), method);
-                _variables.add(variable);
+                _staticVariables.add(variable);
             } else {
                 MethodHandle handle = new MethodHandle(method);
                 _unboundMethodHandles.put(className, handle);
@@ -212,43 +249,32 @@ public class VariableRegistry {
         }
     }
 
-    private void handleRegisteredInstance(Class<?> cls, Object instance) {
-        Supplier<InstanceReference> referenceSupplier = Suppliers.memoize(new InstanceReferenceSupplier(instance));
+    private Collection<Variable> createInstanceVariables(Class<?> cls,
+                                                         Supplier<WeakReference<Object>> referenceSupplier) {
+        Collection<Variable> variables = Lists.newArrayList();
         while (cls != null) {
             String className = cls.getName();
 
             Collection<FieldHandle> fieldHandles = _unboundFieldHandles.get(className);
-            if (!fieldHandles.isEmpty()) {
-                handleRegisteredInstanceFields(cls, referenceSupplier.get(), fieldHandles);
+            for (FieldHandle handle : fieldHandles) {
+                Field field = handle.getField();
+                FieldVariable variable = new FieldVariable(cls, getName(field), referenceSupplier.get(), field);
+
+                variables.add(variable);
             }
 
             Collection<MethodHandle> methodHandles = _unboundMethodHandles.get(className);
-            if (!fieldHandles.isEmpty()) {
-                handleRegisteredInstanceMethods(cls, referenceSupplier.get(), methodHandles);
+            for (MethodHandle handle : methodHandles) {
+                Method method = handle.getMethod();
+                MethodVariable variable = new MethodVariable(cls, getName(method), referenceSupplier.get(), method);
+
+                variables.add(variable);
             }
 
             cls = cls.getSuperclass();
         }
-    }
 
-    private void handleRegisteredInstanceFields(Class<?> cls, InstanceReference instance,
-                                                Collection<FieldHandle> handles) {
-        for (FieldHandle handle : handles) {
-            Field field = handle.getField();
-            FieldVariable variable = new FieldVariable(cls, getName(field), instance, field);
-            
-            _variables.add(variable);
-        }
-    }
-
-    private void handleRegisteredInstanceMethods(Class<?> cls, InstanceReference instance,
-                                                 Collection<MethodHandle> handles) {
-        for (MethodHandle handle : handles) {
-            Method method = handle.getMethod();
-            MethodVariable variable = new MethodVariable(cls, getName(method), instance, method);
-            
-            _variables.add(variable);
-        }
+        return variables;
     }
 
     @SuppressWarnings("unchecked")
@@ -303,43 +329,13 @@ public class VariableRegistry {
         return field;
     }
 
-    private final class InstanceReference extends FinalizableWeakReference<Object> {
-        private final List<Variable> _variables = Lists.newArrayList();
-        
-        protected InstanceReference(Object referent) {
-            super(referent, _referenceQueue);
-        }
-        
-        public void addVariable(Variable v) {
-            _variables.add(v);
-        }
-
-        @Override
-        public void finalizeReferent() {
-            //throw new Exception("implement me!!!!");
-        }
-    }
-    
-    private final class InstanceReferenceSupplier implements Supplier<InstanceReference> {
-        private final Object _referent;
-        
-        public InstanceReferenceSupplier(Object referent) {
-            _referent = referent;
-        }
-        
-        @Override
-        public InstanceReference get() {
-            return new InstanceReference(_referent);
-        }
-    }
-
     private static final class FieldHandle {
         private final Field _field;
 
         public FieldHandle(Field field) {
             _field = field;
         }
-        
+
         public Field getField() {
             return _field;
         }
@@ -358,7 +354,7 @@ public class VariableRegistry {
         public MethodHandle(Method method) {
             _method = method;
         }
-        
+
         public Method getMethod() {
             return _method;
         }

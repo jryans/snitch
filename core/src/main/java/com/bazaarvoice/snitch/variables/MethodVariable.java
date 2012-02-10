@@ -18,13 +18,13 @@ package com.bazaarvoice.snitch.variables;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Objects;
 
-import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Method;
 
 public class MethodVariable extends AbstractVariable {
     private final Method _method;
 
-    public MethodVariable(Class<?> owner, String name, Reference<Object> instance, Method method) {
+    public MethodVariable(Class<?> owner, String name, WeakReference<Object> instance, Method method) {
         super(owner, name, instance);
 
         _method = method;
@@ -34,7 +34,7 @@ public class MethodVariable extends AbstractVariable {
     public MethodVariable(Class<?> owner, String name, Method method) {
         this(owner, name, null, method);
     }
-    
+
     @VisibleForTesting
     public Method getMethod() {
         return _method;
@@ -48,7 +48,7 @@ public class MethodVariable extends AbstractVariable {
     @Override
     public Object getValue() {
         try {
-            return _method.invoke(_instance);
+            return _method.invoke(getInstance());
         } catch (Exception e) {
             // If we weren't able to invoke the method then we need to notify the caller.  Probably the easiest way is
             // to return the exception itself as the value of the variable.  This will show the user that it wasn't
@@ -62,7 +62,7 @@ public class MethodVariable extends AbstractVariable {
         return Objects.toStringHelper(this)
                 .add("name", _name)
                 .add("owner", _owner)
-                .add("instance", _instance.get())
+                .add("instance", getInstance())
                 .add("method", _method)
                 .add("value", getValue())
                 .toString();
