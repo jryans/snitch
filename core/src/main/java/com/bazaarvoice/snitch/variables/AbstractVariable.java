@@ -17,13 +17,12 @@ package com.bazaarvoice.snitch.variables;
 
 import com.bazaarvoice.snitch.Variable;
 
-import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 
 abstract class AbstractVariable implements Variable {
     protected final Class<?> _owner;
     protected final String _name;
-    protected final Reference<Object> _instance;
+    protected final WeakReference<Object> _instance;
 
     protected AbstractVariable(Class<?> owner, String name, WeakReference<Object> instance) {
         _owner = owner;

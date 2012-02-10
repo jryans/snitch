@@ -22,7 +22,7 @@ public interface Variable {
     /** The name of this variable. */
     String getName();
 
-    /** The instance this variable is associated with or {@code null} if there is no instance. */
+    /** The instance this variable is associated with or {@code null} for static variables. */
     Object getInstance();
 
     /** The type of the variable. */

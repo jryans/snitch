@@ -94,6 +94,17 @@ public class VariableRegistryTest {
     }
 
     @Test
+    public void testStaticMethodWithArgumentInLoadedClass() throws NoSuchMethodException {
+        List<MethodEntry> methods = mockMethods(CLASS_NAME, STATIC_METHOD_WITH_ARGUMENTS_NAME);
+        when(_scanner.getMethodsAnnotatedWith(Foo.class)).thenReturn(methods);
+        when(_detector.isClassLoaded(CLASS_NAME)).thenReturn(true);
+        when((Class) _detector.getLoadedClass(CLASS_NAME)).thenReturn(TestClass.class);
+
+        Iterable<Variable> variables = _registry.getVariables();
+        assertTrue(Iterables.isEmpty(variables));
+    }
+
+    @Test
     public void testFieldInRegisteredInstance() throws NoSuchFieldException {
         List<FieldEntry> fields = mockFields(CLASS_NAME, FIELD_NAME);
         when(_scanner.getFieldsAnnotatedWith(Foo.class)).thenReturn(fields);
@@ -149,6 +160,20 @@ public class VariableRegistryTest {
     }
 
     @Test
+    public void testMethodWithArgumentInRegisteredInstance() throws NoSuchMethodException {
+        List<MethodEntry> methods = mockMethods(CLASS_NAME, METHOD_WITH_ARGUMENTS_NAME);
+        when(_scanner.getMethodsAnnotatedWith(Foo.class)).thenReturn(methods);
+        when(_detector.isClassLoaded(CLASS_NAME)).thenReturn(true);
+        when((Class) _detector.getLoadedClass(CLASS_NAME)).thenReturn(TestClass.class);
+
+        TestClass instance = new TestClass();
+        _registry.registerInstance(instance);
+
+        Iterable<Variable> variables = _registry.getVariables();
+        assertTrue(Iterables.isEmpty(variables));
+    }
+
+    @Test
     public void testInheritedMethodInRegisteredInstance() throws NoSuchMethodException {
         List<MethodEntry> methods = mockMethods(CLASS_NAME, METHOD_NAME);
         when(_scanner.getMethodsAnnotatedWith(Foo.class)).thenReturn(methods);
@@ -167,6 +192,28 @@ public class VariableRegistryTest {
 
         MethodVariable variable = (MethodVariable) Iterables.getOnlyElement(variables);
         assertEquals(TestClass.class.getMethod(METHOD_NAME), variable.getMethod());
+    }
+
+    @Test
+    public void testInheritedMethodCalledInRegisteredInstance() throws NoSuchMethodException {
+        List<MethodEntry> methods1 = mockMethods(CLASS_NAME, OVERRIDDEN_METHOD_NAME);
+        List<MethodEntry> methods2 = mockMethods(SUBCLASS_NAME, OVERRIDDEN_METHOD_NAME);
+        List<MethodEntry> methods = Lists.newArrayList(Iterables.concat(methods1, methods2));
+        when(_scanner.getMethodsAnnotatedWith(Foo.class)).thenReturn(methods);
+        when(_detector.isClassLoaded(CLASS_NAME)).thenReturn(true);
+        when(_detector.isClassLoaded(SUBCLASS_NAME)).thenReturn(true);
+        when((Class) _detector.getLoadedClass(CLASS_NAME)).thenReturn(TestClass.class);
+        when((Class) _detector.getLoadedClass(SUBCLASS_NAME)).thenReturn(TestSubclass.class);
+
+        TestSubclass instance = new TestSubclass();
+        _registry.registerInstance(instance);
+
+        Iterable<Variable> variables = _registry.getVariables();
+        assertTrue(Iterables.getOnlyElement(variables) instanceof MethodVariable);
+
+        MethodVariable variable = (MethodVariable) Iterables.getOnlyElement(variables);
+        assertEquals(TestSubclass.class.getMethod(OVERRIDDEN_METHOD_NAME), variable.getMethod());
+        assertEquals(1, variable.getValue());
     }
 
     @Test
@@ -226,17 +273,24 @@ public class VariableRegistryTest {
     private static final String SUBCLASS_NAME = TestSubclass.class.getName();
     private static final String STATIC_FIELD_NAME = "staticField";
     private static final String STATIC_METHOD_NAME = "staticMethod";
+    private static final String STATIC_METHOD_WITH_ARGUMENTS_NAME = "staticMethodWithArgs";
     private static final String FIELD_NAME = "field";
     private static final String METHOD_NAME = "method";
+    private static final String METHOD_WITH_ARGUMENTS_NAME = "methodWithArgs";
+    private static final String OVERRIDDEN_METHOD_NAME = "methodToOverride";
 
     @SuppressWarnings("unused")
     private static class TestClass {
         @Foo public static int staticField;
         @Foo public static int staticMethod() { return 0; }
+        @Foo public static int staticMethodWithArgs(int i) { return i; }
         @Foo public int field;
         @Foo public int method() { return 0; }
+        @Foo public int methodWithArgs(int i) { return i; }
+        @Foo public int methodToOverride() { return 0; }
     }
 
     private static class TestSubclass extends TestClass {
+        @Foo @Override public int methodToOverride() { return 1; }
     }
 }

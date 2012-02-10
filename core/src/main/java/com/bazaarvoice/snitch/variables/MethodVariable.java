@@ -21,7 +21,7 @@ import com.google.common.base.Objects;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Method;
 
-public class MethodVariable extends AbstractVariable {
+class MethodVariable extends AbstractVariable {
     private final Method _method;
 
     public MethodVariable(Class<?> owner, String name, WeakReference<Object> instance, Method method) {

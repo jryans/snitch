@@ -132,6 +132,10 @@ public class VariableRegistry {
 
     /** Return the set of known variables in the system. */
     public Iterable<Variable> getVariables() {
+        if (!_alreadyScanned) {
+            scanClassPath();
+        }
+
         checkForRecentlyLoadedClasses();
 
         // We need to merge _staticVariables and _instanceVariables together here.  We know that they're both
@@ -141,8 +145,12 @@ public class VariableRegistry {
     }
 
     /** Register an instance of a class that may have non-static variables/methods annotated. */
-    public void registerInstance(final Object instance) {
+    public synchronized void registerInstance(final Object instance) {
         if (instance == null) return;
+
+        if (!_alreadyScanned) {
+            scanClassPath();
+        }
 
         checkForRecentlyLoadedClasses();
 
@@ -179,11 +187,6 @@ public class VariableRegistry {
     }
 
     private synchronized void checkForRecentlyLoadedClasses() {
-        // Scan the class path if we haven't already
-        if (!_alreadyScanned) {
-            scanClassPath();
-        }
-
         // When we scan the class path several things can happen:
         //
         //   1) The class that the elements we found belong to has already been loaded by the JVM.  In this case all
@@ -235,7 +238,7 @@ public class VariableRegistry {
         for (MethodEntry entry : entries) {
             Method method = getAnnotatedMethod(cls, _annotationClass, entry.getMethodName());
             if (method == null) {
-                continue;  // TODO: Log error
+                continue;  // This can happen if a method has arguments, getAnnotatedMethod won't load it.
             }
 
             int modifiers = method.getModifiers();
@@ -251,6 +254,14 @@ public class VariableRegistry {
 
     private Collection<Variable> createInstanceVariables(Class<?> cls,
                                                          Supplier<WeakReference<Object>> referenceSupplier) {
+        // We need to make sure we only resolve each method name one time.  We're making the assumption here that
+        // all methods have no arguments, so the only relevant component is the name of the method.  Doing this
+        // check is important because it's possible that a base class will define a method that is overridden by
+        // a subclass.  Java would normally only ever call the subclass version so we should do the same.  We're
+        // starting with the subclass, so the first time we see a given method name should be the only time we
+        // process it.
+        Set<String> seenMethodNames = Sets.newHashSet();
+
         Collection<Variable> variables = Lists.newArrayList();
         while (cls != null) {
             String className = cls.getName();
@@ -266,9 +277,11 @@ public class VariableRegistry {
             Collection<MethodHandle> methodHandles = _unboundMethodHandles.get(className);
             for (MethodHandle handle : methodHandles) {
                 Method method = handle.getMethod();
-                MethodVariable variable = new MethodVariable(cls, getName(method), referenceSupplier.get(), method);
 
-                variables.add(variable);
+                if (seenMethodNames.add(method.getName())) {
+                  MethodVariable variable = new MethodVariable(cls, getName(method), referenceSupplier.get(), method);
+                  variables.add(variable);
+                }
             }
 
             cls = cls.getSuperclass();

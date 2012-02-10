@@ -21,7 +21,7 @@ import com.google.common.base.Objects;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 
-public class FieldVariable extends AbstractVariable {
+class FieldVariable extends AbstractVariable {
     private final Field _field;
 
     public FieldVariable(Class<?> owner, String name, WeakReference<Object> instance, Field field) {
