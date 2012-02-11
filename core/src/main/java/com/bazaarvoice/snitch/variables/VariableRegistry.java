@@ -49,7 +49,6 @@ import static com.bazaarvoice.snitch.scanner.ClassPathAnnotationScanner.MethodEn
 // TODO: Javadoc for class
 // TODO: Create an error reporter that can switch between logging and throwing exceptions (dev mode)
 // TODO: Don't check for classes having been loaded every time, have some sort of backoff
-// TODO: Make sure method has non-void return type
 public class VariableRegistry {
     /** The annotation class to find. */
     private final Class<? extends Annotation> _annotationClass;
@@ -239,6 +238,11 @@ public class VariableRegistry {
             Method method = getAnnotatedMethod(cls, _annotationClass, entry.getMethodName());
             if (method == null) {
                 continue;  // This can happen if a method has arguments, getAnnotatedMethod won't load it.
+            }
+
+            // Return type must be non-void
+            if (method.getReturnType().equals(Void.TYPE)) {
+                continue;
             }
 
             int modifiers = method.getModifiers();

@@ -105,6 +105,17 @@ public class VariableRegistryTest {
     }
 
     @Test
+    public void testStaticMethodWithVoidReturnTypeInLoadedClass() throws NoSuchMethodException {
+        List<MethodEntry> methods = mockMethods(CLASS_NAME, STATIC_METHOD_WITH_VOID_RETURN_TYPE);
+        when(_scanner.getMethodsAnnotatedWith(Foo.class)).thenReturn(methods);
+        when(_detector.isClassLoaded(CLASS_NAME)).thenReturn(true);
+        when((Class) _detector.getLoadedClass(CLASS_NAME)).thenReturn(TestClass.class);
+
+        Iterable<Variable> variables = _registry.getVariables();
+        assertTrue(Iterables.isEmpty(variables));
+    }
+
+    @Test
     public void testFieldInRegisteredInstance() throws NoSuchFieldException {
         List<FieldEntry> fields = mockFields(CLASS_NAME, FIELD_NAME);
         when(_scanner.getFieldsAnnotatedWith(Foo.class)).thenReturn(fields);
@@ -168,6 +179,17 @@ public class VariableRegistryTest {
 
         TestClass instance = new TestClass();
         _registry.registerInstance(instance);
+
+        Iterable<Variable> variables = _registry.getVariables();
+        assertTrue(Iterables.isEmpty(variables));
+    }
+
+    @Test
+    public void testMethodWithVoidReturnTypeInLoadedClass() throws NoSuchMethodException {
+        List<MethodEntry> methods = mockMethods(CLASS_NAME, METHOD_WITH_VOID_RETURN_TYPE);
+        when(_scanner.getMethodsAnnotatedWith(Foo.class)).thenReturn(methods);
+        when(_detector.isClassLoaded(CLASS_NAME)).thenReturn(true);
+        when((Class) _detector.getLoadedClass(CLASS_NAME)).thenReturn(TestClass.class);
 
         Iterable<Variable> variables = _registry.getVariables();
         assertTrue(Iterables.isEmpty(variables));
@@ -274,9 +296,11 @@ public class VariableRegistryTest {
     private static final String STATIC_FIELD_NAME = "staticField";
     private static final String STATIC_METHOD_NAME = "staticMethod";
     private static final String STATIC_METHOD_WITH_ARGUMENTS_NAME = "staticMethodWithArgs";
+    private static final String STATIC_METHOD_WITH_VOID_RETURN_TYPE = "staticMethodWithVoidReturn";
     private static final String FIELD_NAME = "field";
     private static final String METHOD_NAME = "method";
     private static final String METHOD_WITH_ARGUMENTS_NAME = "methodWithArgs";
+    private static final String METHOD_WITH_VOID_RETURN_TYPE = "methodWithVoidReturn";
     private static final String OVERRIDDEN_METHOD_NAME = "methodToOverride";
 
     @SuppressWarnings("unused")
@@ -284,10 +308,12 @@ public class VariableRegistryTest {
         @Foo public static int staticField;
         @Foo public static int staticMethod() { return 0; }
         @Foo public static int staticMethodWithArgs(int i) { return i; }
+        @Foo public static void staticMethodWithVoidReturn() {}
         @Foo public int field;
         @Foo public int method() { return 0; }
         @Foo public int methodWithArgs(int i) { return i; }
         @Foo public int methodToOverride() { return 0; }
+        @Foo public static void methodWithVoidReturn() {}
     }
 
     private static class TestSubclass extends TestClass {
