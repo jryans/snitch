@@ -89,7 +89,7 @@ public class MyService {
   private static final AtomicLong NUM_REQUESTS = new AtomicLong();
 
   @Monitored("number-of-handled-requests")
-  public static void getNumRequests() {
+  public static int getNumRequests() {
     return NUM_REQUESTS.get();
   }
   
